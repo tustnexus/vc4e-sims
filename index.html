@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>VC4E • Teaching Engineers to Think with Simulations</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Crimson+Pro:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+  <style>
+
+    :root{
+      --bg:#f6f5f2;
+      --panel:#ffffff;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --line:#dedbd2;
+
+      --blue:#1D4ED8;
+      --green:#047857;
+      --amber:#B45309;
+      --purple:#6D28D9;
+
+      --live:#ecfdf5;
+      --draft:#eff6ff;
+      --planned:#f5f5f4;
+
+      --shadow:0 10px 40px rgba(0,0,0,0.06);
+    }
+
+    *{
+      box-sizing:border-box;
+    }
+
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:Inter,system-ui,sans-serif;
+      overflow-x:hidden;
+    }
+
+    /* Decorative Engineering Layer */
+
+    .bg-grid{
+      position:fixed;
+      inset:0;
+      background:
+        linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px);
+      background-size:40px 40px;
+      pointer-events:none;
+      opacity:0.35;
+    }
+
+    .rupee{
+      position:fixed;
+      color:rgba(0,0,0,0.04);
+      font-family:"JetBrains Mono", monospace;
+      font-weight:700;
+      pointer-events:none;
+      user-select:none;
+    }
+
+    .r1{top:8%;left:6%;font-size:54px;transform:rotate(-12deg);}
+    .r2{top:18%;right:10%;font-size:72px;transform:rotate(8deg);}
+    .r3{top:52%;left:3%;font-size:64px;transform:rotate(12deg);}
+    .r4{bottom:12%;right:6%;font-size:80px;transform:rotate(-10deg);}
+    .r5{bottom:30%;left:14%;font-size:44px;}
+    .r6{top:70%;right:20%;font-size:48px;}
+
+    .math{
+      position:fixed;
+      font-family:"Crimson Pro", serif;
+      color:rgba(29,78,216,0.06);
+      pointer-events:none;
+      user-select:none;
+      line-height:1.3;
+    }
+
+    .m1{
+      top:10%;
+      right:18%;
+      font-size:26px;
+      transform:rotate(-7deg);
+    }
+
+    .m2{
+      bottom:18%;
+      left:10%;
+      font-size:32px;
+      transform:rotate(8deg);
+    }
+
+    .gear{
+      position:fixed;
+      opacity:0.05;
+      pointer-events:none;
+    }
+
+    .g1{
+      width:140px;
+      top:18%;
+      left:-30px;
+      animation:spin 30s linear infinite;
+    }
+
+    .g2{
+      width:120px;
+      bottom:12%;
+      right:-20px;
+      animation:spinReverse 26s linear infinite;
+    }
+
+    @keyframes spin{
+      from{transform:rotate(0deg);}
+      to{transform:rotate(360deg);}
+    }
+
+    @keyframes spinReverse{
+      from{transform:rotate(360deg);}
+      to{transform:rotate(0deg);}
+    }
+
+    /* Main Layout */
+
+    .wrap{
+      max-width:1200px;
+      margin:0 auto;
+      padding:48px 24px 90px;
+      position:relative;
+      z-index:2;
+    }
+
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:70px;
+      flex-wrap:wrap;
+      gap:14px;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:14px;
+    }
+
+    .brand-mark{
+      width:48px;
+      height:48px;
+      border-radius:14px;
+      background:
+        linear-gradient(135deg,#ffffff,#f3f4f6);
+      border:1px solid var(--line);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      box-shadow:var(--shadow);
+      font-size:20px;
+    }
+
+    .brand-text{
+      line-height:1.2;
+    }
+
+    .brand-title{
+      font-weight:700;
+      letter-spacing:-0.03em;
+      font-size:18px;
+    }
+
+    .brand-sub{
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .status{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      background:#fff;
+      border:1px solid var(--line);
+      padding:12px 18px;
+      border-radius:999px;
+      font-size:14px;
+      box-shadow:var(--shadow);
+    }
+
+    .pulse{
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      background:var(--green);
+      animation:pulse 1.5s infinite;
+    }
+
+    @keyframes pulse{
+      0%,100%{
+        transform:scale(1);
+        opacity:1;
+      }
+
+      50%{
+        transform:scale(1.5);
+        opacity:0.45;
+      }
+    }
+
+    /* Hero */
+
+    .hero{
+      margin-bottom:70px;
+    }
+
+    .eyebrow{
+      font-family:"JetBrains Mono", monospace;
+      text-transform:uppercase;
+      letter-spacing:0.16em;
+      font-size:12px;
+      color:var(--blue);
+      margin-bottom:18px;
+    }
+
+    h1{
+      margin:0;
+      font-size:clamp(52px,9vw,96px);
+      line-height:0.92;
+      letter-spacing:-0.06em;
+      max-width:980px;
+      font-weight:700;
+    }
+
+    .subhead{
+      margin-top:22px;
+      font-size:20px;
+      color:var(--purple);
+      font-family:"JetBrains Mono", monospace;
+    }
+
+    .desc{
+      margin-top:28px;
+      max-width:760px;
+      color:var(--muted);
+      font-size:20px;
+      line-height:1.8;
+      font-family:"Crimson Pro", serif;
+    }
+
+    /* Info Cards */
+
+    .cards{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+      gap:18px;
+      margin:54px 0 74px;
+    }
+
+    .card{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:22px;
+      padding:24px;
+      box-shadow:var(--shadow);
+    }
+
+    .card-icon{
+      font-size:28px;
+      margin-bottom:14px;
+    }
+
+    .card-title{
+      font-weight:600;
+      margin-bottom:8px;
+      font-size:18px;
+    }
+
+    .card-body{
+      color:var(--muted);
+      line-height:1.7;
+      font-size:15px;
+    }
+
+    /* Table */
+
+    .table-wrap{
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:28px;
+      overflow:hidden;
+      box-shadow:var(--shadow);
+    }
+
+    .table-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:30px 34px;
+      border-bottom:1px solid var(--line);
+      flex-wrap:wrap;
+      gap:18px;
+    }
+
+    .table-title{
+      font-size:34px;
+      font-family:"Crimson Pro", serif;
+      font-weight:600;
+      letter-spacing:-0.03em;
+    }
+
+    .legend{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .pill{
+      padding:6px 12px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:700;
+      letter-spacing:0.08em;
+      text-transform:uppercase;
+      font-family:"JetBrains Mono", monospace;
+    }
+
+    .live{
+      background:var(--live);
+      color:var(--green);
+    }
+
+    .draft{
+      background:var(--draft);
+      color:var(--blue);
+    }
+
+    .planned{
+      background:var(--planned);
+      color:#78716c;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+    }
+
+    th{
+      text-align:left;
+      padding:22px 28px;
+      font-size:14px;
+      letter-spacing:0.08em;
+      text-transform:uppercase;
+      color:var(--muted);
+      font-family:"JetBrains Mono", monospace;
+      border-bottom:1px solid var(--line);
+    }
+
+    td{
+      padding:24px 28px;
+      border-bottom:1px solid #ece7df;
+      vertical-align:top;
+    }
+
+    tr:last-child td{
+      border-bottom:none;
+    }
+
+    .chapter{
+      font-weight:700;
+      font-size:28px;
+      font-family:"Crimson Pro", serif;
+    }
+
+    .cell-title{
+      font-weight:600;
+      margin-bottom:10px;
+      line-height:1.5;
+    }
+
+    .cell-link{
+      display:inline-block;
+      margin-top:10px;
+      color:var(--blue);
+      text-decoration:none;
+      font-size:14px;
+      font-weight:600;
+    }
+
+    .cell-link:hover{
+      text-decoration:underline;
+    }
+
+    .placeholder{
+      color:#a8a29e;
+      font-style:italic;
+      font-size:14px;
+    }
+
+    .mini{
+      margin-top:10px;
+      display:inline-block;
+      font-size:10px;
+      padding:5px 10px;
+      border-radius:999px;
+      font-family:"JetBrains Mono", monospace;
+      text-transform:uppercase;
+      letter-spacing:0.08em;
+    }
+
+    .footer{
+      margin-top:70px;
+      text-align:center;
+      color:var(--muted);
+      font-family:"Crimson Pro", serif;
+      font-size:22px;
+      line-height:1.8;
+    }
+
+    .footer small{
+      display:block;
+      margin-top:20px;
+      font-size:14px;
+      color:#9ca3af;
+      font-family:"JetBrains Mono", monospace;
+    }
+
+    @media(max-width:900px){
+
+      h1{
+        font-size:62px;
+      }
+
+      table{
+        display:block;
+        overflow-x:auto;
+      }
+
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <div class="bg-grid"></div>
+
+  <!-- Decorative Rupee Symbols -->
+
+  <div class="rupee r1">₹</div>
+  <div class="rupee r2">₹</div>
+  <div class="rupee r3">₹</div>
+  <div class="rupee r4">₹</div>
+  <div class="rupee r5">₹</div>
+  <div class="rupee r6">₹</div>
+
+  <!-- Decorative Math -->
+
+  <div class="math m1">
+    J(θ)⁻¹ · F(x) = 0
+    <br><br>
+    det(K) ≠ 0
+  </div>
+
+  <div class="math m2">
+    σ = Eε
+    <br><br>
+    ∂f / ∂x
+  </div>
+
+  <!-- Decorative Gears -->
+
+  <svg class="gear g1" viewBox="0 0 100 100">
+    <path fill="#111827"
+      d="M57 5l5 9 10 2 2 10 9 5-3 10 6 8-6 8 3 10-9 5-2 10-10 2-5 9-10-3-10 3-5-9-10-2-2-10-9-5 3-10-6-8 6-8-3-10 9-5 2-10 10-2 5-9 10 3z"/>
+  </svg>
+
+  <svg class="gear g2" viewBox="0 0 100 100">
+    <path fill="#111827"
+      d="M57 5l5 9 10 2 2 10 9 5-3 10 6 8-6 8 3 10-9 5-2 10-10 2-5 9-10-3-10 3-5-9-10-2-2-10-9-5 3-10-6-8 6-8-3-10 9-5 2-10 10-2 5-9 10 3z"/>
+  </svg>
+
+  <div class="wrap">
+
+    <div class="topbar">
+
+      <div class="brand">
+
+        <div class="brand-mark">
+          ⚙
+        </div>
+
+        <div class="brand-text">
+          <div class="brand-title">VC4E</div>
+          <div class="brand-sub">Vibe Coding for Engineers</div>
+        </div>
+
+      </div>
+
+      <div class="status">
+        <div class="pulse"></div>
+        Simulations currently under active development
+      </div>
+
+    </div>
+
+    <section class="hero">
+
+      <div class="eyebrow">
+        Engineering intuition • simulations • systems thinking • ₹
+      </div>
+
+      <h1>
+        Teaching engineers
+        <br>
+        to think with simulations
+      </h1>
+
+      <div class="subhead">
+        vibe coding for engineers
+      </div>
+
+      <div class="desc">
+        Most engineering students study dozens of mathematical topics.
+        In real engineering systems, however, a surprisingly small set
+        of ideas appears again and again.
+      </div>
+
+    </section>
+
+    <section class="cards">
+
+      <div class="card">
+        <div class="card-icon">⚙</div>
+        <div class="card-title">Engineering Intuition</div>
+        <div class="card-body">
+          Build physical intuition for nonlinear systems, material failure,
+          convergence, optimization, instability and flow.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">∂</div>
+        <div class="card-title">Interactive Simulations</div>
+        <div class="card-body">
+          Learn by dragging sliders, breaking systems,
+          and watching equations become behaviour.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">₹</div>
+        <div class="card-title">Indian Engineering Context</div>
+        <div class="card-body">
+          Built with the realities of Indian engineering education,
+          resourcefulness and practical systems thinking in mind.
+        </div>
+      </div>
+
+    </section>
+
+    <section class="table-wrap">
+
+      <div class="table-head">
+
+        <div class="table-title">
+          21 Concepts at a Glance
+        </div>
+
+        <div class="legend">
+          <span class="pill live">Live</span>
+          <span class="pill draft">Draft</span>
+          <span class="pill planned">Planned</span>
+        </div>
+
+      </div>
+
+      <table>
+
+        <thead>
+          <tr>
+            <th>Chapter</th>
+            <th>3A</th>
+            <th>3B</th>
+            <th>3C</th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+          <tr>
+
+            <td class="chapter">1</td>
+
+            <td>
+              <div class="cell-title">
+                Newton-Raphson Robot Kinematics
+              </div>
+
+              <span class="mini draft">draft</span>
+
+              <br>
+
+              <a class="cell-link"
+                href="./newton_raphson_robot_kinematics.html">
+                Open Simulation →
+              </a>
+
+              <br>
+
+              <a class="cell-link"
+                href="./Infobox for kinematics robot.txt">
+                Open Infobox →
+              </a>
+            </td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Jacobian Singularity Explorer
+              </div>
+
+              <span class="mini planned">planned</span>
+            </td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Redundant Manipulator IK
+              </div>
+
+              <span class="mini planned">planned</span>
+            </td>
+
+          </tr>
+
+          <tr>
+
+            <td class="chapter">2</td>
+
+            <td>
+              <div class="cell-title">
+                Tensile Bar Plastic Deformation
+              </div>
+
+              <span class="mini live">live</span>
+
+              <br>
+
+              <a class="cell-link"
+                href="./tensile_bar_plastic_deformation.html">
+                Open Simulation →
+              </a>
+            </td>
+
+            <td>
+              <div class="cell-title">
+                Plate with Hole Plastic Zone
+              </div>
+
+              <span class="mini live">live</span>
+
+              <br>
+
+              <a class="cell-link"
+                href="./plate_with_hole_plastic_zone.html">
+                Open Simulation →
+              </a>
+            </td>
+
+            <td>
+              <div class="cell-title">
+                Three Point Bending Plastic Hinge
+              </div>
+
+              <span class="mini live">live</span>
+
+              <br>
+
+              <a class="cell-link"
+                href="./three_point_bending_plastic_hinge.html">
+                Open Simulation →
+              </a>
+            </td>
+
+          </tr>
+
+          <tr>
+
+            <td class="chapter">3</td>
+
+            <td>
+              <div class="cell-title">
+                Grid Impedance & Reactance
+              </div>
+
+              <span class="mini draft">draft</span>
+
+              <br>
+
+              <a class="cell-link"
+                href="./circuit.html">
+                Open Simulation →
+              </a>
+            </td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Nonlinear Stability Basin
+              </div>
+
+              <span class="mini planned">planned</span>
+            </td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Constraint Violation Simulator
+              </div>
+
+              <span class="mini planned">planned</span>
+            </td>
+
+          </tr>
+
+          <tr>
+            <td class="chapter">4</td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Aliasing Explorer
+              </div>
+              <span class="mini planned">planned</span>
+            </td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Windowing & Leakage
+              </div>
+              <span class="mini planned">planned</span>
+            </td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] FFT Reconstruction
+              </div>
+              <span class="mini planned">planned</span>
+            </td>
+
+          </tr>
+
+          <tr>
+            <td class="chapter">5</td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Braess Paradox Traffic Flow
+              </div>
+              <span class="mini planned">planned</span>
+            </td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Steiner Tree Routing
+              </div>
+              <span class="mini planned">planned</span>
+            </td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Max Flow / Min Cut
+              </div>
+              <span class="mini planned">planned</span>
+            </td>
+
+          </tr>
+
+          <tr>
+            <td class="chapter">6</td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Sample Size & Confidence
+              </div>
+              <span class="mini planned">planned</span>
+            </td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Importance Sampling
+              </div>
+              <span class="mini planned">planned</span>
+            </td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Correlation Structures
+              </div>
+              <span class="mini planned">planned</span>
+            </td>
+
+          </tr>
+
+          <tr>
+            <td class="chapter">7</td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Mesh Convergence Explorer
+              </div>
+              <span class="mini planned">planned</span>
+            </td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Nonlinear Material Behaviour
+              </div>
+              <span class="mini planned">planned</span>
+            </td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Boundary Conditions Sandbox
+              </div>
+              <span class="mini planned">planned</span>
+            </td>
+
+          </tr>
+
+          <tr>
+            <td class="chapter">8</td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Critical Path / Gantt
+              </div>
+              <span class="mini planned">planned</span>
+            </td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Bullwhip Effect
+              </div>
+              <span class="mini planned">planned</span>
+            </td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Maintenance Scheduling
+              </div>
+              <span class="mini planned">planned</span>
+            </td>
+
+          </tr>
+
+          <tr>
+            <td class="chapter">9</td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Fluid Boundary Layers
+              </div>
+              <span class="mini planned">planned</span>
+            </td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Turbulence Transition
+              </div>
+              <span class="mini planned">planned</span>
+            </td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Navier-Stokes Playground
+              </div>
+              <span class="mini planned">planned</span>
+            </td>
+
+          </tr>
+
+          <tr>
+            <td class="chapter">10</td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Control Loop Tuning
+              </div>
+              <span class="mini planned">planned</span>
+            </td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] Kalman Filter Intuition
+              </div>
+              <span class="mini planned">planned</span>
+            </td>
+
+            <td>
+              <div class="placeholder">
+                [ planned ] State Space Explorer
+              </div>
+              <span class="mini planned">planned</span>
+            </td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </section>
+
+    <div class="footer">
+
+      Some engineers solve equations.
+      <br>
+      Others learn where the equations break.
+
+      <small>
+        VC4E • under active construction • ₹ • jacobians may explode without warning
+      </small>
+
+    </div>
+
+  </div>
+
+</body>
+</html>
