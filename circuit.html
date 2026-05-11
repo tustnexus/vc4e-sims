@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bandra Substation: 11kV Impedance Solver</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-safe: #3B82F6;
+            --color-warn: #F59E0B;
+            --color-danger: #DC2626;
+            --color-algo: #7C3AED;
+            --color-hidden: #cbd5e1;
+            --color-bg: #ffffff;
+            --color-bg-alt: #f8fafc;
+            --color-text: #1e293b;
+            --color-border: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Crimson Pro', serif; background-color: var(--color-bg); color: var(--color-text); line-height: 1.6; padding: 20px; max-width: 850px; margin: 0 auto; }
+        
+        .attribution { font-size: 0.85rem; color: #64748b; margin-bottom: 20px; text-align: center; font-style: italic; }
+        
+        .sim-container { border: 1px solid var(--color-border); border-radius: 8px; overflow: hidden; background: var(--color-bg); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
+        .header { padding: 15px 20px; background: var(--color-bg-alt); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; }
+        .pips { display: flex; gap: 8px; }
+        .pip { width: 10px; height: 10px; border-radius: 50%; background: var(--color-border); transition: 0.3s; }
+        .pip.active { background: var(--color-algo); }
+        .phase-badge { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; background: var(--color-border); }
+
+        .section { display: none; padding: 24px; animation: fadeIn 0.3s ease-out; }
+        .section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        canvas { display: block; background: #fff; border: 1px solid var(--color-border); border-radius: 4px; width: 100%; height: 280px; margin-bottom: 20px; }
+
+        .controls { background: var(--color-bg-alt); padding: 16px; border-radius: 6px; margin-bottom: 20px; }
+        .control-group label { display: block; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; margin-bottom: 6px; }
+        input[type="range"] { width: 100%; accent-color: var(--color-algo); cursor: pointer; }
+
+        .readout-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+        .readout-card { padding: 12px; border-left: 4px solid var(--color-hidden); background: var(--color-bg-alt); border-radius: 4px; }
+        .readout-card.resolved { border-left-color: #059669; background: #f0fdf4; }
+        .readout-label { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; text-transform: uppercase; display: block; }
+        .readout-value { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 1.1rem; }
+
+        .matrix-display { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; display: flex; justify-content: center; align-items: center; gap: 10px; margin: 20px 0; }
+        .matrix-bracket { font-size: 4rem; font-weight: 200; color: var(--color-hidden); }
+
+        .list-step { margin-bottom: 12px; padding-left: 15px; border-left: 2px solid var(--color-algo); font-size: 0.95rem; }
+        .step-num { font-family: 'JetBrains Mono'; font-weight: 700; color: var(--color-algo); margin-right: 8px; }
+
+        #iter-log { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; background: #1e293b; color: #f1f5f9; padding: 12px; border-radius: 4px; height: 60px; overflow-y: auto; }
+        .footer-nav { padding: 15px 20px; background: var(--color-bg-alt); border-top: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; }
+        button { padding: 8px 18px; font-family: 'Crimson Pro', serif; font-weight: 600; cursor: pointer; border: 1px solid var(--color-border); background: #fff; border-radius: 4px; }
+        button:hover:not(:disabled) { background: var(--color-algo); color: #fff; }
+        
+        .footer-attribution { font-size: 0.8rem; color: #94a3b8; text-align: center; margin-top: 24px; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="attribution">
+    This simulation accompanies <strong>Chapter 2</strong> of <em>Vibe Coding for Engineers</em> by Anil Bahuman
+</div>
+
+<div class="sim-container">
+    <div class="header">
+        <div class="pips" id="pips">
+            <div class="pip active"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div>
+        </div>
+        <div class="phase-badge" id="badge">ACT 1: THE INVESTIGATION</div>
+    </div>
+
+    <div class="section active" id="sec-1">
+        <h2>1. The Bandra Substation Mystery</h2>
+        <p>A traction power imbalance is detected in the Mumbai Metro Line. To prevent a cascade failure, we must find the current flowing through the far-right branch ($I_3$). Because the loops are coupled, a single KVL equation (Kirchhoff's Voltage Law) isn't enough.</p>
+        <canvas id="can-1" width="800" height="280"></canvas>
+        <div class="controls">
+            <div class="control-group">
+                <label>PRIMARY VOLTAGE (V1): <span id="v1-txt">11000</span>V</label>
+                <input type="range" id="v1-slide" min="1000" max="22000" step="500" value="11000">
+            </div>
+        </div>
+        <div class="readout-grid">
+            <div class="readout-card"><span class="readout-label">Estimated I1</span><span class="readout-value">?? A</span></div>
+            <div class="readout-card"><span class="readout-label">Estimated I2</span><span class="readout-value">?? A</span></div>
+            <div class="readout-card" style="border-left-color: var(--color-danger)"><span class="readout-label">Target I3</span><span class="readout-value">?? A</span></div>
+        </div>
+    </div>
+
+    <div class="section" id="sec-2">
+    <h2>2. The Reactance Transition</h2>
+    <p>Watch how the grid stabilizes. At low inductance (left), the circuit is purely resistive ($R$), leading to thermal failure. As we increase the line's magnetic "inertia" ($L$), the Reactance triangle grows, choking the current to safe levels.</p>
+    <canvas id="can-2" width="800" height="280"></canvas>
+    <div class="controls">
+        <div class="control-group">
+            <label>LINE INDUCTANCE (L): <span id="l-val-combined">0.010</span> H</label>
+            <input type="range" id="l-slide-combined" min="0.001" max="0.5" step="0.005" value="0.01">
+        </div>
+    </div>
+    <div class="readout-grid">
+        <div id="card-xl" class="readout-card"><span class="readout-label">X_L (Reactance)</span><span id="xl-read-combined" class="readout-value">0.000 Ω</span></div>
+        <div id="card-i" class="readout-card"><span class="readout-label">Resulting I</span><span id="i-read-combined" class="readout-value">0 A</span></div>
+        <div id="card-status" class="readout-card"><span class="readout-label">Grid Status</span><span id="status-read-combined" class="readout-value">STABLE</span></div>
+    </div>
+</div>
+
+    <div class="section" id="sec-4">
+        <h2>4. Interaction Singularity</h2>
+        <p>When the coupling impedances ($R_2$ vs $R_3$) match perfectly, the system loses the ability to distinguish between sectors. This "Singularity" causes the GE solver to fail.</p>
+        <canvas id="can-4" width="800" height="240"></canvas>
+        <div class="controls">
+            <div class="control-group">
+                <label>SHARED R2 (Sector Link): <span id="r2-txt">3.0</span>Ω</label>
+                <input type="range" id="r2-slide" min="1.0" max="6.0" step="0.1" value="3.0">
+            </div>
+        </div>
+    </div>
+
+    <div class="section" id="sec-5">
+        <h2>5. The Final Solve</h2>
+        <div class="matrix-display">
+            <span class="matrix-bracket">[</span><div id="m-disp" style="text-align:right; line-height:2.2;"></div><span class="matrix-bracket">]</span>
+            <div style="font-weight:bold;">{I} =</div>
+            <span class="matrix-bracket">[</span><div id="b-disp" style="text-align:right; line-height:2.2;"></div><span class="matrix-bracket">]</span>
+        </div>
+        <div class="readout-grid">
+            <div id="out-i1" class="readout-card"><span class="readout-label">Sector A</span><span id="v-i1" class="readout-value">??</span></div>
+            <div id="out-i2" class="readout-card"><span class="readout-label">Sector B</span><span id="v-i2" class="readout-value">??</span></div>
+            <div id="out-i3" class="readout-card" style="border-left-color: var(--color-danger)"><span class="readout-label">Metro I3</span><span id="v-i3" class="readout-value">??</span></div>
+        </div>
+        <div id="iter-log">Matrix ready. Isolating Metro current...</div>
+        <div style="text-align:center; margin-top:15px;">
+            <button id="step-btn">Eliminate Sector Dependency</button>
+            <button id="reset-btn" style="margin-left:10px;">Reset</button>
+        </div>
+    </div>
+
+    <div class="section" id="sec-6">
+        <h2>6. Engineering Takeaways</h2>
+        <div class="list-step"><span class="step-num">1</span><strong>Reactance is Protective:</strong> In 11kV grids, $X_L$ limits fault currents that would otherwise destroy $R$-dominant circuits.</div>
+        <div class="list-step"><span class="step-num">2</span><strong>Condition Number:</strong> A stable grid must have distinct branch impedances. Symmetry leads to numerical (and physical) collapse.</div>
+        <div class="list-step"><span class="step-num">3</span><strong>The Decoupling:</strong> GE allows us to see how much Sector A is "leaking" into the Metro line by zeroing out interaction terms.</div>
+        <div class="list-step" style="border-color: var(--color-safe);"><span class="step-num">4</span><strong>Accuracy:</strong> Scaling to realistic $\Omega$ values brings Metro currents into the 100-800A range.</div>
+    </div>
+
+    <div class="footer-nav">
+        <button id="prev-btn" disabled>Previous</button>
+        <div id="counter">1 / 5</div>
+        <button id="next-btn">Next</button>
+    </div>
+</div>
+
+<div class="footer-attribution">
+    This simulation accompanies <strong>Chapter 2</strong> of <em>Vibe Coding for Engineers</em> by Anil Bahuman
+</div>
+
+<script>
+    const state = {
+        step: 0, v1: 11000, freq: 50,
+        r1: 5, r2: 3, r3: 4,
+        l1: 0.1, l2: 0.08, l3: 0.12,
+        c1: 100e-6, c2: 150e-6, c3: 200e-6,
+        A: [], b: [], realI: [],
+        gA: [], gB: [], gStep: 0, res: [false, false, false]
+    };
+
+    const cfg = { w: 800, h: 280, ox: 160, oy: 60, lw: 160, lh: 130 };
+
+    function get(id) { return document.getElementById(id); }
+    function col(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+    function getZ(r, l, c) {
+        const w = 2 * Math.PI * state.freq;
+        const xl = w * l;
+        const xc = 1 / (w * c);
+        return Math.sqrt(r**2 + (xl - xc)**2);
+    }
+
+    function solveSystem() {
+        const z11 = getZ(state.r1 + state.r2, state.l1 + state.l2, state.c1);
+        const z22 = getZ(state.r2 + state.r3, state.l2 + state.l3, state.c2);
+        const z33 = getZ(state.r3 + state.r1, state.l3 + state.l1, state.c3);
+        const z12 = state.r2; // Shared branch link
+        const z23 = state.r3;
+
+        state.A = [
+            [z11, -z12, 0],
+            [-z12, z22, -z23],
+            [0, -z23, z33]
+        ];
+        state.b = [state.v1, 6600, 0];
+        
+        const det = (m) => m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1]) - m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0]);
+        const d = det(state.A);
+        if (Math.abs(d) < 1) return [0,0,0];
+        
+        const slv = (idx) => {
+            const t = state.A.map((r, i) => r.map((c, j) => j === idx ? state.b[i] : c));
+            return det(t) / d;
+        };
+        state.realI = [slv(0), slv(1), slv(2)];
+    }
+
+    function drawInductor(ctx, x1, y1, x2, y2) {
+        ctx.beginPath(); ctx.moveTo(x1, y1);
+        const dx = x2-x1, dy = y2-y1, len = Math.sqrt(dx*dx+dy*dy);
+        const steps = 4;
+        for(let i=0; i<steps; i++){
+            const cx = x1 + (i+0.5)*(dx/steps);
+            const cy = y1 + (i+0.5)*(dy/steps);
+            ctx.arc(cx, cy, 6, 0, Math.PI*2);
+        }
+        ctx.stroke();
+    }
+
+ function drawMeshArrow(ctx, x, y, w, h, current) {
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    const radius = 26;
+
+    const absCurrent = Math.abs(current);
+    const thickness = Math.max(2.2, Math.min(11, absCurrent / 65));
+    ctx.lineWidth = thickness;
+    ctx.strokeStyle = current >= 0 ? '#3B82F6' : '#EA580C';
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // Arc
+    const startAngle = -Math.PI * 0.42;
+    const endAngle = Math.PI * 1.28;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, startAngle, endAngle);
+    ctx.stroke();
+
+    // Tip position
+    const tipX = cx + radius * Math.cos(endAngle);
+    const tipY = cy + radius * Math.sin(endAngle);
+
+    // Tangent direction
+    const tangentAngle = endAngle + Math.PI / 2;
+
+    const headLength = 13.5;
+    const headHalfAngle = 0.57;
+
+    const wing1X = tipX - headLength * Math.cos(tangentAngle - headHalfAngle);
+    const wing1Y = tipY - headLength * Math.sin(tangentAngle - headHalfAngle);
+
+    const wing2X = tipX - headLength * Math.cos(tangentAngle + headHalfAngle);
+    const wing2Y = tipY - headLength * Math.sin(tangentAngle + headHalfAngle);
+
+    ctx.beginPath();
+    ctx.moveTo(tipX, tipY);
+    ctx.lineTo(wing1X, wing1Y);
+    ctx.moveTo(tipX, tipY);
+    ctx.lineTo(wing2X, wing2Y);
+    ctx.stroke();
+
+    // Tip dot
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.beginPath();
+    ctx.arc(tipX, tipY, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+    function drawCircuit(id) {
+        const ctx = get(id).getContext('2d');
+        ctx.clearRect(0,0,cfg.w,cfg.h);
+        const {ox, oy, lw, lh} = cfg;
+        solveSystem();
+
+        const drawLoop = (x, y, label, iIdx) => {
+            ctx.strokeStyle = col('--color-border'); ctx.lineWidth = 1;
+            ctx.strokeRect(x, y, lw, lh);
+            drawMeshArrow(ctx, x, y, lw, lh, state.realI[iIdx]);
+            ctx.font = 'bold 10px JetBrains Mono'; ctx.fillStyle = col('--color-text'); ctx.textAlign='center';
+            ctx.fillText(label, x + lw/2, y + 15);
+        };
+
+        drawLoop(ox, oy, "SUBSTATION A", 0);
+        drawLoop(ox + lw, oy, "SUBSTATION B", 1);
+        drawLoop(ox + 2*lw, oy, "METRO LINE", 2);
+
+        // Shared Branch - Inductor Style
+        ctx.strokeStyle = col('--color-safe'); ctx.lineWidth = 2;
+        drawInductor(ctx, ox+lw, oy+20, ox+lw, oy+lh-20);
+        ctx.fillText(state.r2+"Ω", ox+lw+20, oy+lh/2);
+
+        drawInductor(ctx, ox+2*lw, oy+20, ox+2*lw, oy+lh-20);
+        ctx.fillText("4Ω", ox+2*lw+15, oy+lh/2);
+
+        // Feed
+        ctx.fillStyle = col('--color-danger');
+        ctx.beginPath(); ctx.arc(ox, oy+lh/2, 10, 0, 7); ctx.stroke();
+        ctx.fillText(state.v1+"V", ox-40, oy+lh/2+5);
+    }
+
+    function drawPhasor() {
+        const ctx = get('can-3').getContext('2d'); ctx.clearRect(0,0,800,200);
+        const cx = 100, cy = 150;
+        const w = 2 * Math.PI * state.freq;
+        const xl = w * state.l1;
+        const xc = 1 / (w * state.c1);
+        const x_net = xl - xc;
+        const scale = 4;
+
+        // R Vector
+        ctx.strokeStyle = col('--color-danger'); ctx.lineWidth=3;
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + state.r1*15, cy); ctx.stroke();
+        ctx.fillText("R", cx + 20, cy+15);
+
+        // X Vector
+        ctx.strokeStyle = col('--color-warn');
+        ctx.beginPath(); ctx.moveTo(cx + state.r1*15, cy); ctx.lineTo(cx + state.r1*15, cy - x_net*4); ctx.stroke();
+        ctx.fillText("X_net", cx + state.r1*15 + 5, cy - 40);
+
+        // Z Vector
+        ctx.strokeStyle = col('--color-safe');
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + state.r1*15, cy - x_net*4); ctx.stroke();
+        
+        get('r-stat').textContent = state.r1 + " Ω";
+        get('xl-stat').textContent = xl.toFixed(1) + " Ω";
+        get('ztot-stat').textContent = getZ(state.r1, state.l1, state.c1).toFixed(1) + " Ω";
+    }
+
+    function drawCombinedAct2() {
+    const ctx = get('can-2').getContext('2d');
+    ctx.clearRect(0,0,800,280);
+    
+    // Reactance Math
+    const xl = 2 * Math.PI * state.freq * state.l1;
+    const z = Math.sqrt(state.r1**2 + xl**2);
+    const current = state.v1 / z;
+    const isFailing = current > 2000;
+
+    // Draw Thermal Glow if failing
+    if(isFailing) {
+        const alpha = Math.min(0.5, (current - 2000) / 4000);
+        ctx.fillStyle = `rgba(220, 38, 38, ${alpha})`;
+        ctx.fillRect(0, 0, 800, 280);
+    }
+
+    // Draw Impedance Triangle
+    const cx = 350, cy = 200, s = 4;
+    // R - Red
+    ctx.strokeStyle = col('--color-danger'); ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + state.r1 * s, cy); ctx.stroke();
+    // X_L - Amber
+    ctx.strokeStyle = col('--color-warn');
+    ctx.beginPath(); ctx.moveTo(cx + state.r1 * s, cy); ctx.lineTo(cx + state.r1 * s, cy - xl * s); ctx.stroke();
+    // Z - Safe Blue
+    ctx.strokeStyle = col('--color-safe');
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + state.r1 * s, cy - xl * s); ctx.stroke();
+
+    // UI Updates
+    get('xl-read-combined').textContent = xl.toFixed(2) + " Ω";
+    get('i-read-combined').textContent = Math.round(current) + " A";
+    get('status-read-combined').textContent = isFailing ? "THERMAL FAILURE" : "STABLE";
+    get('card-status').className = 'readout-card' + (isFailing ? '' : ' resolved');
+}
+
+    function syncGauss() {
+        const m = get('m-disp'), b = get('b-disp');
+        m.innerHTML = ''; b.innerHTML = '';
+        state.gA.forEach((row, i) => {
+            const rd = document.createElement('div');
+            row.forEach((v, j) => {
+                const s = document.createElement('span'); s.style.width='60px'; s.style.display='inline-block';
+                s.textContent = v.toFixed(1); if(i === state.gStep) s.style.color = col('--color-algo');
+                rd.appendChild(s);
+            });
+            m.appendChild(rd);
+            const bd = document.createElement('div'); bd.textContent = state.gB[i].toFixed(0);
+            if(i === state.gStep) bd.style.color = col('--color-algo');
+            b.appendChild(bd);
+        });
+
+        ["i1", "i2", "i3"].forEach((id, i) => {
+            const v = get('v-'+id), out = get('out-'+id);
+            if(state.res[i]) { v.textContent = state.realI[i].toFixed(0)+" A"; out.classList.add('resolved'); }
+            else { v.textContent = "??"; out.classList.remove('resolved'); }
+        });
+    }
+
+    async function stepAlg() {
+        if(state.gStep < 2) {
+            const i = state.gStep;
+            for(let k=i+1; k<3; k++) {
+                const f = state.gA[k][i] / state.gA[i][i];
+                get('iter-log').textContent = `Removing Sector Interaction...`;
+                for(let j=i; j<3; j++) state.gA[k][j] -= f * state.gA[i][j];
+                state.gB[k] -= f * state.gB[i];
+                syncGauss(); await new Promise(r => setTimeout(r, 450));
+            }
+            state.gStep++; 
+            if(state.gStep === 2) { state.res[2] = true; get('iter-log').textContent = "Metro Load ($I_3$) Decoupled!"; }
+        } else {
+            state.res[1] = true; syncGauss(); await new Promise(r => setTimeout(r, 400));
+            state.res[0] = true; syncGauss(); get('iter-log').textContent = "Grid Resolved.";
+        }
+    }
+
+
+function nav() {
+    const allSections = document.querySelectorAll('.section');
+    const allPips = document.querySelectorAll('.pip');
+    
+    allSections.forEach((s, i) => s.classList.toggle('active', i === state.step));
+    allPips.forEach((p, i) => p.classList.toggle('active', i === state.step));
+
+    get('next-btn').disabled = state.step === 4;
+    get('prev-btn').disabled = state.step === 0;
+    get('counter').textContent = (state.step + 1) + " / 5";
+    
+    get('badge').textContent = [
+        "ACT 1: INVESTIGATION", 
+        "ACT 2: TRANSITION",
+        "ACT 3: STABILITY", 
+        "ACT 4: THE SOLVE", 
+        "ACT 5: SUMMARY"
+    ][state.step];
+
+    if(state.step === 0) drawCircuit('can-1');
+    
+    if(state.step === 1) drawCombinedAct2();
+    
+    if(state.step === 2) drawCircuit('can-4');
+    
+    if(state.step === 3) {
+        solveSystem(); 
+        state.gA = JSON.parse(JSON.stringify(state.A)); 
+        state.gB = [...state.b]; 
+        state.gStep = 0; 
+        state.res = [false, false, false]; 
+        syncGauss(); 
+    }
+}
+
+get('v1-slide').oninput = (e) => { 
+    state.v1 = +e.target.value; 
+    get('v1-txt').textContent = state.v1; 
+    if(state.step === 0) drawCircuit('can-1'); 
+};
+
+get('l-slide-combined').oninput = (e) => { 
+    state.l1 = +e.target.value; 
+    get('l-val-combined').textContent = state.l1.toFixed(3); 
+    if(state.step === 1) drawCombinedAct2(); 
+};
+
+get('r2-slide').oninput = (e) => { 
+    state.r2 = +e.target.value; 
+    get('r2-txt').textContent = state.r2.toFixed(1); 
+    if(state.step === 2) drawCircuit('can-4'); 
+};
+
+get('next-btn').onclick = () => { state.step++; nav(); };
+get('prev-btn').onclick = () => { state.step--; nav(); };
+get('step-btn').onclick = stepAlg;
+get('reset-btn').onclick = () => { nav(); };
+
+nav();
+</script>
+</body>
+</html>

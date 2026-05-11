@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Newton-Raphson: 2-DOF Robot Arm Inverse Kinematics</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+body { font-family: 'Crimson Pro', Georgia, serif; }
+.attribution { font-size: 0.85rem; color: #64748b; margin: 0 auto 1.5rem; text-align: center; font-style: italic; max-width: 700px; padding: 0 1.5rem; }
+.xp{font-family:'Crimson Pro',Georgia,serif;padding:1.5rem 0 0;max-width:700px;margin:0 auto;}
+.progs{display:flex;gap:6px;margin-bottom:2rem;}
+.pip{height:3px;flex:1;background:var(--color-border-secondary);border-radius:2px;transition:background 0.5s;}
+.pip.on{background:#1D4ED8;}
+.sec{display:none;}
+.sec.active{display:block;animation:fi 0.4s ease;}
+@keyframes fi{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.tag{font-family:'JetBrains Mono','Courier New',monospace;font-size:11px;font-weight:600;letter-spacing:.15em;color:#1D4ED8;text-transform:uppercase;margin-bottom:.5rem;display:flex;align-items:center;gap:8px;}
+.tag::after{content:'';flex:1;height:1px;background:var(--color-border-tertiary);}
+.sh{font-size:26px;font-weight:600;color:var(--color-text-primary);line-height:1.2;margin-bottom:.6rem;}
+.sub{font-size:15px;color:var(--color-text-secondary);line-height:1.75;margin-bottom:1.25rem;font-style:italic;}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.25rem;align-items:start;}
+@media(max-width:540px){.cols{grid-template-columns:1fr;}}
+.cwrap{background:var(--color-background-secondary);border-radius:12px;border:.5px solid var(--color-border-tertiary);padding:12px;display:flex;flex-direction:column;align-items:center;}
+.clbl{font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;color:var(--color-text-tertiary);margin-top:8px;text-align:center;}
+.eq{background:var(--color-background-secondary);border-left:3px solid #1D4ED8;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:10px;font-family:'JetBrains Mono','Courier New',monospace;font-size:12px;color:var(--color-text-primary);line-height:1.9;}
+.eq .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--color-text-secondary);margin-bottom:5px;font-family:'Crimson Pro',Georgia,serif;font-style:normal;}
+.eq.red{border-color:#DC2626;}.eq.purp{border-color:#7C3AED;}.eq.grn{border-color:#059669;}.eq.amb{border-color:#D97706;}
+.b{color:#1D4ED8;font-weight:600;}.p{color:#7C3AED;font-weight:600;}.r{color:#DC2626;font-weight:600;}.g{color:#059669;font-weight:600;}
+.ilog{background:var(--color-background-secondary);border-radius:8px;padding:8px 12px;font-family:'JetBrains Mono','Courier New',monospace;font-size:11px;color:var(--color-text-secondary);margin-top:10px;height:90px;overflow-y:auto;line-height:1.7;}
+.irow{color:var(--color-text-primary);}.irow.conv{color:#059669;font-weight:600;}
+.igrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.25rem;}
+.icard{background:var(--color-background-secondary);border-radius:12px;border:.5px solid var(--color-border-tertiary);padding:14px;}
+.icard.warn{border-color:var(--color-border-warning);}
+.inum{font-size:22px;margin-bottom:6px;}
+.itit{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:3px;}
+.ibod{font-size:12px;color:var(--color-text-secondary);line-height:1.6;}
+.nav{display:flex;justify-content:space-between;align-items:center;padding:1.25rem 0 .5rem;border-top:.5px solid var(--color-border-tertiary);margin-top:1.5rem;}
+.nb{padding:7px 18px;border-radius:8px;border:.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-primary);font-size:13px;cursor:pointer;font-family:'JetBrains Mono','Courier New',monospace;}
+.nb:hover{background:var(--color-background-secondary);}
+.nb:disabled{opacity:.3;cursor:default;}
+.nb.pr{background:#1D4ED8;color:#fff;border-color:#1D4ED8;}
+.nb.pr:hover{background:#1e40af;}
+.si{font-family:'JetBrains Mono','Courier New',monospace;font-size:11px;color:var(--color-text-tertiary);}
+.kf{background:var(--color-background-secondary);border:.5px solid var(--color-border-tertiary);border-radius:8px;padding:12px 16px;margin-bottom:.75rem;display:flex;align-items:flex-start;gap:12px;}
+.kf-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+.kf-text{font-size:13px;color:var(--color-text-secondary);line-height:1.65;}
+.kf-text strong{color:var(--color-text-primary);font-weight:500;}
+.footer-attribution { font-size: 0.8rem; color: #94a3b8; text-align: center; margin-top: 2rem; font-style: italic; max-width: 700px; padding: 0 1.5rem; }
+</style>
+</head>
+<body>
+
+<div class="attribution">
+    This simulation accompanies <strong>Chapter 3</strong> of <em>Vibe Coding for Engineers</em> by Anil Bahuman
+</div>
+
+<div class="xp">
+  <div class="progs">
+    <div class="pip on" id="p0"></div>
+    <div class="pip" id="p1"></div>
+    <div class="pip" id="p2"></div>
+    <div class="pip" id="p3"></div>
+  </div>
+
+  <!-- S0: STATE THE PROBLEM -->
+  <div class="sec active" id="s0">
+    <div class="tag">01 — State the Problem</div>
+    <h2 class="sh">A Robot Arm Lives in Two Worlds</h2>
+    <p class="sub">Controllers speak joint angles. Tasks live in Cartesian space. Forward kinematics is a recipe. Inverse kinematics is a mystery — drag the sliders to feel why.</p>
+    <div class="cols">
+      <div class="cwrap">
+        <canvas id="fkC" width="220" height="220"></canvas>
+        <div class="clbl" id="fkPos">end-effector: (·, ·)</div>
+      </div>
+      <div>
+        <div class="eq">
+          <div class="lbl">Forward kinematics — easy ✓</div>
+          <div>x = L₁cos<span class="b">(θ₁)</span> + L₂cos<span class="b">(θ₁+θ₂)</span></div>
+          <div>y = L₁sin<span class="b">(θ₁)</span> + L₂sin<span class="b">(θ₁+θ₂)</span></div>
+        </div>
+        <div class="eq red">
+          <div class="lbl">Inverse kinematics — hard ✗</div>
+          <div>Given <span class="r">(x<sub>d</sub>, y<sub>d</sub>)</span>, find <span class="b">θ₁, θ₂</span></div>
+          <div style="font-size:11px;color:var(--color-text-secondary);margin-top:4px;">such that FK(θ) = target</div>
+        </div>
+        <div style="margin-top:14px;">
+          <label style="font-size:12px;color:var(--color-text-secondary);font-family:'JetBrains Mono',monospace;">θ₁ = <span id="t1val">40°</span></label>
+          <input type="range" id="sl1" min="-180" max="180" value="40" step="1" style="width:100%;display:block;margin:4px 0 12px;">
+          <label style="font-size:12px;color:var(--color-text-secondary);font-family:'JetBrains Mono',monospace;">θ₂ = <span id="t2val">50°</span></label>
+          <input type="range" id="sl2" min="-150" max="150" value="50" step="1" style="width:100%;display:block;margin:4px 0;">
+        </div>
+      </div>
+    </div>
+    <div class="eq purp">
+      <div class="lbl">The problem we need to solve</div>
+      <div><span class="r">F(θ)</span> = FK(θ) − target = <span class="r">0</span>&nbsp;&nbsp; where θ = [θ₁, θ₂]ᵀ</div>
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-top:5px;">This is a nonlinear system. Sine and cosine make it transcendental — algebra alone cannot solve it.</div>
+    </div>
+  </div>
+
+  <!-- S1: AMPLIFY THE PROBLEM -->
+  <div class="sec" id="s1">
+    <div class="tag">02 — Amplify the Problem</div>
+    <h2 class="sh">Why Algebra Breaks Down</h2>
+    <p class="sub">The functions that define robot position — sine, cosine — have no algebraic inverse in combination. For chains with 3+ joints, no closed form exists at all.</p>
+    <div class="cols">
+      <div>
+        <div class="eq">
+          <div class="lbl">The system to solve</div>
+          <div>f₁ = L₁cos(θ₁) + L₂cos(θ₁+θ₂) − <span class="r">x<sub>d</sub></span> = 0</div>
+          <div>f₂ = L₁sin(θ₁) + L₂sin(θ₁+θ₂) − <span class="r">y<sub>d</sub></span> = 0</div>
+        </div>
+        <div class="eq red">
+          <div class="lbl">Why direct inversion fails</div>
+          <div style="font-size:11.5px;line-height:2;">
+            arcsin only returns one branch<br>
+            <span class="r">Multiple solutions</span> for same target<br>
+            θ₁ and θ₂ are entangled nonlinearly<br>
+            6-DOF arms: 16+ solution branches
+          </div>
+        </div>
+        <div class="eq grn">
+          <div class="lbl">The key reframing</div>
+          <div style="font-size:12.5px;line-height:1.8;font-family:'Crimson Pro',Georgia,serif;font-style:italic;">
+            Don't solve it exactly. <span class="g">Linearize</span> near a guess, step toward the root, and repeat until close enough.
+          </div>
+        </div>
+      </div>
+      <div class="cwrap">
+        <div style="font-size:10px;color:var(--color-text-secondary);font-family:'JetBrains Mono',monospace;margin-bottom:6px;">‖F(θ)‖ over θ-space</div>
+        <canvas id="lsC" width="200" height="185"></canvas>
+        <div class="clbl">blue = near zero (solution) · bright = large error</div>
+      </div>
+    </div>
+    <div class="kf">
+      <div class="kf-icon">⚡</div>
+      <div class="kf-text"><strong>The singularity problem:</strong> At certain configurations, two joints become kinematically aligned — the arm loses a degree of freedom momentarily. The Jacobian becomes singular (det = 0). This must be handled with damped least-squares or joint limits. We will see this in the solution step.</div>
+    </div>
+  </div>
+
+  <!-- S2: SOLUTION -->
+  <div class="sec" id="s2">
+    <div class="tag">03 — The Solution</div>
+    <h2 class="sh">Newton-Raphson: Iterate to the Root</h2>
+    <p class="sub">Replace the hard nonlinear solve with a sequence of trivial linear ones. The Jacobian tells us which direction reduces error the most — click the workspace to watch it converge.</p>
+    <div class="cols">
+      <div>
+        <div class="eq purp">
+          <div class="lbl">The update rule</div>
+          <div style="font-size:13px;">θ<sub>k+1</sub> = θ<sub>k</sub> − <span class="p">J(θ<sub>k</sub>)⁻¹</span> <span class="r">F(θ<sub>k</sub>)</span></div>
+        </div>
+        <div class="eq">
+          <div class="lbl">The Jacobian (2-DOF planar)</div>
+          <div style="font-size:11px;line-height:2.2;">
+            J = [−L₁s₁−L₂s₁₂ &nbsp; −L₂s₁₂]<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;[&nbsp;L₁c₁+L₂c₁₂ &nbsp;&nbsp; L₂c₁₂]
+          </div>
+        </div>
+        <div class="eq grn">
+          <div class="lbl">Convergence rate</div>
+          <div style="font-size:11.5px;line-height:2;">
+            Near root: <span class="g">quadratic</span> convergence<br>
+            eₖ₊₁ ≈ C · eₖ²<br>
+            1mm → 1μm → 1nm in 3 steps
+          </div>
+        </div>
+        <div class="ilog" id="ilog">← click the workspace to set a target</div>
+      </div>
+      <div class="cwrap" style="cursor:crosshair;gap:0;">
+        <canvas id="nrC" width="245" height="245" style="cursor:crosshair;border-radius:8px;"></canvas>
+        <div class="clbl" id="nrSt">click anywhere in workspace to solve</div>
+      </div>
+    </div>
+    <div style="margin-top:8px;">
+      <div style="font-size:10px;color:var(--color-text-secondary);font-family:'JetBrains Mono',monospace;margin-bottom:6px;">convergence plot — error per iteration</div>
+      <div style="position:relative;height:100px;">
+        <canvas id="errC" width="680" height="100"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- S3: SUMMARY -->
+  <div class="sec" id="s3">
+    <div class="tag">04 — Summary</div>
+    <h2 class="sh">What the Engineer Takes Away</h2>
+    <p class="sub">Newton-Raphson doesn't solve the problem — it dissolves it, by replacing the hard question with a sequence of easy ones.</p>
+    <div class="igrid">
+      <div class="icard">
+        <div class="inum">⟳</div>
+        <div class="itit">Iterative, not algebraic</div>
+        <div class="ibod">No closed-form needed. Start anywhere inside the workspace, step toward the root using local gradient information.</div>
+      </div>
+      <div class="icard">
+        <div class="inum">∂</div>
+        <div class="itit">The Jacobian is the engine</div>
+        <div class="ibod">J maps infinitesimal joint-space motion to end-effector motion. Inverting it gives the correction direction.</div>
+      </div>
+      <div class="icard">
+        <div class="inum">²</div>
+        <div class="itit">Quadratic convergence</div>
+        <div class="ibod">Once inside the basin of convergence, error squares each iteration. Practically: 5–8 steps to machine precision.</div>
+      </div>
+      <div class="icard warn">
+        <div class="inum">△</div>
+        <div class="itit">Singularities require care</div>
+        <div class="ibod">det(J) → 0 at kinematic singularities. Damped least-squares: J† = Jᵀ(JJᵀ + λI)⁻¹ is the standard fix.</div>
+      </div>
+    </div>
+    <div class="eq purp">
+      <div class="lbl">The one formula to remember</div>
+      <div style="font-size:14px;">θ<sub>k+1</sub> = θ<sub>k</sub> − <span class="p">J⁻¹(θ<sub>k</sub>)</span> · <span class="r">F(θ<sub>k</sub>)</span></div>
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-top:6px;">
+        F(θ) = FK(θ) − target &nbsp;|&nbsp; J = ∂FK/∂θ &nbsp;|&nbsp; converges quadratically near the solution
+      </div>
+    </div>
+    <div class="kf">
+      <div class="kf-icon">📖</div>
+      <div class="kf-text"><strong>Further reading for your book:</strong> Spong & Vidyasagar §4.4 on iterative IK; Buss (2004) "Introduction to inverse kinematics with Jacobian transpose, pseudoinverse and damped least-squares methods" — the canonical reference for practitioners.</div>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button class="nb" id="pb" onclick="nav(-1)" disabled>← prev</button>
+    <span class="si" id="si">1 / 4</span>
+    <button class="nb pr" id="nb" onclick="nav(1)">next →</button>
+  </div>
+</div>
+
+<div class="footer-attribution">
+    This simulation accompanies <strong>Chapter 3</strong> of <em>Vibe Coding for Engineers</em> by Anil Bahuman
+</div>
+
+<script>
+// ---- config ----
+const L1=90, L2=68;
+let cur=0, tot=4;
+let nrTarget=null, nrIters=[], nrTick=null;
+
+// ---- nav ----
+function nav(d){
+  document.getElementById('s'+cur).classList.remove('active');
+  cur=Math.max(0,Math.min(tot-1,cur+d));
+  document.getElementById('s'+cur).classList.add('active');
+  for(let i=0;i<tot;i++) document.getElementById('p'+i).classList.toggle('on',i<=cur);
+  document.getElementById('pb').disabled=cur===0;
+  document.getElementById('nb').disabled=cur===tot-1;
+  document.getElementById('si').textContent=(cur+1)+' / '+tot;
+  if(cur===1) drawLandscape();
+  if(cur===2) initNR();
+}
+
+// ---- FK helpers ----
+function fk(t1,t2){return{x:L1*Math.cos(t1)+L2*Math.cos(t1+t2),y:L1*Math.sin(t1)+L2*Math.sin(t1+t2)};}
+function jac(t1,t2){
+  const s1=Math.sin(t1),s12=Math.sin(t1+t2),c1=Math.cos(t1),c12=Math.cos(t1+t2);
+  return[[-L1*s1-L2*s12,-L2*s12],[L1*c1+L2*c12,L2*c12]];
+}
+
+// ---- S0: FK canvas ----
+const fkC=document.getElementById('fkC');
+const fkX=fkC.getContext('2d');
+
+function drawRobotArm(ctx,canvas,t1,t2,target,trail){
+  const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2;
+  ctx.clearRect(0,0,W,H);
+  // grid
+  ctx.strokeStyle='rgba(128,128,128,0.08)';ctx.lineWidth=0.5;
+  for(let x=0;x<W;x+=20){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=20){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  // workspace ring
+  ctx.beginPath();ctx.arc(cx,cy,L1+L2,0,Math.PI*2);
+  ctx.strokeStyle='rgba(29,78,216,0.13)';ctx.lineWidth=1.5;ctx.stroke();
+  // inner ring
+  ctx.beginPath();ctx.arc(cx,cy,Math.abs(L1-L2),0,Math.PI*2);
+  ctx.strokeStyle='rgba(220,38,38,0.1)';ctx.lineWidth=1;ctx.stroke();
+  // trail
+  if(trail&&trail.length>1){
+    ctx.beginPath();
+    trail.forEach((it,i)=>{
+      const p=fk(it.t1,it.t2);
+      const tx2=cx+p.x,ty2=cy-p.y;
+      i===0?ctx.moveTo(tx2,ty2):ctx.lineTo(tx2,ty2);
+    });
+    ctx.strokeStyle='rgba(124,58,237,0.45)';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);ctx.stroke();ctx.setLineDash([]);
+  }
+  // target
+  if(target){
+    const tx=cx+target.x,ty=cy-target.y;
+    ctx.beginPath();ctx.arc(tx,ty,9,0,Math.PI*2);
+    ctx.strokeStyle='#DC2626';ctx.lineWidth=2;ctx.stroke();
+    ctx.strokeStyle='rgba(220,38,38,0.4)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(tx-13,ty);ctx.lineTo(tx+13,ty);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(tx,ty-13);ctx.lineTo(tx,ty+13);ctx.stroke();
+  }
+  // joints
+  const j1x=cx+L1*Math.cos(t1),j1y=cy-L1*Math.sin(t1);
+  const ex=j1x+L2*Math.cos(t1+t2),ey=j1y-L2*Math.sin(t1+t2);
+  // link 1
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(j1x,j1y);
+  ctx.strokeStyle='#1E3A5F';ctx.lineWidth=7;ctx.lineCap='round';ctx.stroke();
+  // link 2
+  ctx.beginPath();ctx.moveTo(j1x,j1y);ctx.lineTo(ex,ey);
+  ctx.strokeStyle='#1D4ED8';ctx.lineWidth=5;ctx.stroke();
+  // base
+  ctx.beginPath();ctx.arc(cx,cy,7,0,Math.PI*2);ctx.fillStyle='#1E3A5F';ctx.fill();
+  // joint 1
+  ctx.beginPath();ctx.arc(j1x,j1y,5,0,Math.PI*2);ctx.fillStyle='#7C3AED';ctx.fill();
+  ctx.beginPath();ctx.arc(j1x,j1y,5,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=1.5;ctx.stroke();
+  // ee
+  ctx.beginPath();ctx.arc(ex,ey,6,0,Math.PI*2);ctx.fillStyle='#DC2626';ctx.fill();
+  ctx.beginPath();ctx.arc(ex,ey,6,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=1.5;ctx.stroke();
+}
+
+function updateFK(){
+  const t1=parseFloat(document.getElementById('sl1').value)*Math.PI/180;
+  const t2=parseFloat(document.getElementById('sl2').value)*Math.PI/180;
+  document.getElementById('t1val').textContent=document.getElementById('sl1').value+'°';
+  document.getElementById('t2val').textContent=document.getElementById('sl2').value+'°';
+  const p=fk(t1,t2);
+  document.getElementById('fkPos').textContent='end-effector: ('+p.x.toFixed(1)+', '+p.y.toFixed(1)+')';
+  drawRobotArm(fkX,fkC,t1,t2,null,null);
+}
+document.getElementById('sl1').addEventListener('input',updateFK);
+document.getElementById('sl2').addEventListener('input',updateFK);
+updateFK();
+
+// ---- S1: landscape ----
+function drawLandscape(){
+  const c=document.getElementById('lsC');
+  const ctx=c.getContext('2d');
+  const W=c.width,H=c.height;
+  const xd=70,yd=80;
+  const img=ctx.createImageData(W,H);
+  for(let px=0;px<W;px++){
+    for(let py=0;py<H;py++){
+      const t1=(px/W)*2*Math.PI-Math.PI;
+      const t2=(py/H)*2*Math.PI-Math.PI;
+      const p=fk(t1,t2);
+      const err=Math.sqrt((p.x-xd)**2+(p.y-yd)**2);
+      const n=Math.min(err/(L1+L2),1);
+      const idx=(py*W+px)*4;
+      img.data[idx]=Math.round(n*210);
+      img.data[idx+1]=Math.round(n*100*(1-n*.4));
+      img.data[idx+2]=Math.round((1-n)*200+30);
+      img.data[idx+3]=255;
+    }
+  }
+  ctx.putImageData(img,0,0);
+  // axis labels
+  ctx.fillStyle='rgba(255,255,255,0.7)';ctx.font='9px Courier New';
+  ctx.fillText('θ₁: −π→π',3,H-4);ctx.fillText('θ₂↑',3,11);
+  // solution dots (brute force find them)
+  ctx.strokeStyle='rgba(255,255,0,0.9)';ctx.lineWidth=1.5;
+  for(let px=0;px<W;px+=2){
+    for(let py=0;py<H;py+=2){
+      const t1=(px/W)*2*Math.PI-Math.PI;
+      const t2=(py/H)*2*Math.PI-Math.PI;
+      const p=fk(t1,t2);
+      const err=Math.sqrt((p.x-xd)**2+(p.y-yd)**2);
+      if(err<8){
+        ctx.beginPath();ctx.arc(px,py,2,0,Math.PI*2);ctx.stroke();
+      }
+    }
+  }
+  ctx.fillStyle='rgba(255,255,0,0.9)';ctx.font='9px Courier New';
+  ctx.fillText('◯ solutions',W-66,12);
+}
+
+// ---- S2: N-R solver ----
+function solveNR(xd,yd){
+  let t1=Math.atan2(yd,xd)*0.7, t2=0.6;
+  const iters=[{t1,t2,err:Infinity}];
+  for(let k=0;k<25;k++){
+    const p=fk(t1,t2);
+    const f1=p.x-xd, f2=p.y-yd;
+    const err=Math.sqrt(f1*f1+f2*f2);
+    iters[iters.length-1].err=err;
+    if(err<0.4) break;
+    const J=jac(t1,t2);
+    const det=J[0][0]*J[1][1]-J[0][1]*J[1][0];
+    if(Math.abs(det)<0.5) break;
+    const dt1=-(J[1][1]*f1-J[0][1]*f2)/det;
+    const dt2=(J[1][0]*f1-J[0][0]*f2)/det;
+    t1+=dt1; t2+=dt2;
+    iters.push({t1,t2,err});
+  }
+  return iters;
+}
+
+function initNR(){
+  const c=document.getElementById('nrC');
+  drawRobotArm(c.getContext('2d'),c,0.5,0.6,null,null);
+  c.onclick=function(e){
+    const r=c.getBoundingClientRect();
+    const mx=(e.clientX-r.left)*(c.width/r.width);
+    const my=(e.clientY-r.top)*(c.height/r.height);
+    const cx=c.width/2,cy=c.height/2;
+    const tx=mx-cx, ty=-(my-cy);
+    const reach=Math.sqrt(tx*tx+ty*ty);
+    if(reach>L1+L2-8||reach<Math.abs(L1-L2)+8){
+      document.getElementById('nrSt').textContent='out of workspace — try closer to center';
+      return;
+    }
+    nrTarget={x:tx,y:ty};
+    if(nrTick) clearTimeout(nrTick);
+    nrIters=solveNR(tx,ty);
+    animateNR(c,0);
+  };
+}
+
+function animateNR(c,idx){
+  const ctx=c.getContext('2d');
+  if(idx>=nrIters.length){
+    drawErrorChart(nrIters);
+    return;
+  }
+  const it=nrIters[idx];
+  drawRobotArm(ctx,c,it.t1,it.t2,nrTarget,nrIters.slice(0,idx+1));
+  const log=document.getElementById('ilog');
+  const div=document.createElement('div');
+  const conv=idx===nrIters.length-1;
+  div.className='irow'+(conv?' conv':'');
+  div.textContent='k='+idx+'  θ₁='+(it.t1*180/Math.PI).toFixed(2)+'°  θ₂='+(it.t2*180/Math.PI).toFixed(2)+'°  ‖F‖='+(isFinite(it.err)?it.err.toFixed(3):'—');
+  log.appendChild(div);log.scrollTop=log.scrollHeight;
+  document.getElementById('nrSt').textContent=conv?'converged in '+idx+' iterations':'iteration '+idx+'...';
+  nrTick=setTimeout(()=>animateNR(c,idx+1),380);
+}
+
+function drawErrorChart(iters){
+  const c=document.getElementById('errC');
+  const ctx=c.getContext('2d');
+  const W=c.width,H=c.height;
+  ctx.clearRect(0,0,W,H);
+  const errs=iters.map(it=>it.err).filter(e=>isFinite(e)&&e>=0);
+  if(errs.length<2) return;
+  const maxE=errs[0];
+  const n=errs.length;
+  const pl=40,pr=15,pt=8,pb=25;
+  const cW=W-pl-pr,cH=H-pt-pb;
+  // axes
+  ctx.strokeStyle='rgba(128,128,128,0.25)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(pl,pt);ctx.lineTo(pl,H-pb);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(pl,H-pb);ctx.lineTo(W-pr,H-pb);ctx.stroke();
+  // grid lines
+  ctx.strokeStyle='rgba(128,128,128,0.1)';
+  [0.25,0.5,0.75].forEach(f=>{
+    const y=pt+cH*(1-f);
+    ctx.beginPath();ctx.moveTo(pl,y);ctx.lineTo(W-pr,y);ctx.stroke();
+  });
+  // labels
+  ctx.fillStyle='rgba(128,128,128,0.7)';ctx.font='9px Courier New';
+  ctx.fillText('‖F‖',2,pt+12);
+  errs.forEach((_,i)=>{
+    const x=pl+(i/(Math.max(n-1,1)))*cW;
+    ctx.fillText(i,x-3,H-6);
+  });
+  ctx.fillText('k',pl+cW/2,H-4);
+  // fill under curve
+  ctx.beginPath();
+  errs.forEach((e,i)=>{
+    const x=pl+(i/Math.max(n-1,1))*cW;
+    const y=pt+cH*(1-Math.min(e/maxE,1));
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  const lastX=pl+cW;
+  ctx.lineTo(lastX,H-pb);ctx.lineTo(pl,H-pb);ctx.closePath();
+  ctx.fillStyle='rgba(220,38,38,0.08)';ctx.fill();
+  // line
+  ctx.beginPath();
+  errs.forEach((e,i)=>{
+    const x=pl+(i/Math.max(n-1,1))*cW;
+    const y=pt+cH*(1-Math.min(e/maxE,1));
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle='#DC2626';ctx.lineWidth=2;ctx.stroke();
+  // dots
+  errs.forEach((e,i)=>{
+    const x=pl+(i/Math.max(n-1,1))*cW;
+    const y=pt+cH*(1-Math.min(e/maxE,1));
+    ctx.beginPath();ctx.arc(x,y,3.5,0,Math.PI*2);
+    ctx.fillStyle=i===errs.length-1?'#059669':'#DC2626';ctx.fill();
+  });
+  // converged label
+  const le=errs[errs.length-1];
+  const lx=pl+cW, ly=pt+cH*(1-Math.min(le/maxE,1));
+  ctx.fillStyle='#059669';ctx.font='9px Courier New';
+  ctx.fillText('↙ converged',lx-62,Math.max(ly-4,pt+10));
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plate with Hole: Plastic Zone Growth</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body { font-family: 'Crimson Pro', Georgia, serif; }
+.attribution { font-size: 0.85rem; color: #64748b; margin: 0 auto 1.5rem; text-align: center; font-style: italic; max-width: 700px; padding: 0 1.5rem; }
+.fe{font-family:'Crimson Pro',Georgia,serif;padding:1.5rem 0;max-width:700px;margin:0 auto}
+.tag{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#7C3AED;font-family:'JetBrains Mono',monospace}
+.pb{display:inline-block;padding:3px 12px;border-radius:4px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;transition:all .4s;font-family:'JetBrains Mono',monospace}
+.p0{background:#EFF6FF;color:#1E40AF}.p1{background:#FEF3C7;color:#92400E}.p2{background:#FFF7ED;color:#C2410C}.p3{background:#FEF2F2;color:#991B1B}
+.rds{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
+.rc{background:var(--color-background-secondary);border-radius:8px;padding:9px 12px;border:.5px solid var(--color-border-tertiary)}
+.rl{font-size:9px;color:var(--color-text-tertiary);font-family:'JetBrains Mono',monospace;letter-spacing:.08em;margin-bottom:4px;text-transform:uppercase}
+.rv{font-size:16px;font-weight:500;color:var(--color-text-primary);font-family:'JetBrains Mono',monospace}
+.sl{display:flex;align-items:center;gap:10px;margin:8px 0}
+.pt{font-size:13px;color:var(--color-text-secondary);border-left:3px solid #7C3AED;padding:7px 13px;line-height:1.75;transition:border-color .4s;font-style:italic}
+.row2{display:grid;grid-template-columns:1fr 185px;gap:12px;align-items:start;margin-top:10px}
+.cbl{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--color-text-tertiary);margin-bottom:3px}
+.footer-attribution { font-size: 0.8rem; color: #94a3b8; text-align: center; margin-top: 2rem; font-style: italic; max-width: 700px; padding: 0 1.5rem; }
+</style>
+
+<body>
+
+<div class="attribution">
+    This simulation accompanies <strong>Chapter 7</strong> of <em>Vibe Coding for Engineers</em> by Anil Bahuman
+</div>
+
+<div class="fe">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+    <span class="tag">Option B · Plate with hole · Kirsch + von Mises</span>
+    <span class="pb p0" id="pb">Elastic</span>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px">
+    <span class="cbl">σ_vm / σ_y</span>
+    <div style="flex:1;height:7px;border-radius:3px;background:linear-gradient(to right,#2850C8,#14B4D2,#4ED246,#F0C300,#FF5000,#C01520);opacity:0.8"></div>
+    <span class="cbl">0 ————— ≥1.0 (yield)</span>
+  </div>
+
+  <canvas id="mc" width="680" height="310" style="width:100%;height:auto;display:block;border-radius:8px;"></canvas>
+
+  <div class="sl">
+    <span style="font-size:10px;color:var(--color-text-secondary);font-family:'JetBrains Mono',monospace;min-width:44px">σ₀ / σ_y</span>
+    <input type="range" id="sl" min="0" max="100" value="0" step="1" style="flex:1">
+    <span style="font-size:10px;min-width:36px;text-align:right;font-family:'JetBrains Mono',monospace;color:var(--color-text-secondary)" id="slv">0.00</span>
+  </div>
+
+  <div class="rds">
+    <div class="rc"><div class="rl">Applied σ₀/σ_y</div><div class="rv" id="r0">0.000</div></div>
+    <div class="rc"><div class="rl">Peak σ_vm/σ_y</div><div class="rv" id="r1">0.000</div></div>
+    <div class="rc"><div class="rl">Yielded area</div><div class="rv" id="r2">—</div></div>
+    <div class="rc"><div class="rl">First yield at</div><div class="rv" style="font-size:12px">σ₀ = σ_y/3</div></div>
+  </div>
+
+  <div class="row2">
+    <div class="pt" id="pt">Stress flows around the hole. Kt = 3 at the equator means the hole edge sees three times the applied stress. No material has yielded yet — the elastic field is fully reversible and load redistribution has not begun.</div>
+    <div>
+      <div class="cbl">yielded area vs load</div>
+      <canvas id="pc" width="185" height="130" style="width:100%;height:auto;display:block;"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="footer-attribution">
+    This simulation accompanies <strong>Chapter 7</strong> of <em>Vibe Coding for Engineers</em> by Anil Bahuman
+</div>
+
+<script>
+const CX=340,CY=155,R=44;
+const PL=60,PR=620,PT=28,PB=282;
+const W=680,H=310;
+
+const PH=[
+  {cls:'p0',col:'#3B82F6',lbl:'Elastic',
+   txt:"Stress flows around the hole. Kt = 3 at the equator means the hole edge sees three times the applied stress. No material has yielded yet — the elastic field is fully reversible and load redistribution has not begun."},
+  {cls:'p1',col:'#F59E0B',lbl:'First yield',
+   txt:"Yielding nucleates at exactly 3 o'clock and 9 o'clock — where Kirsch predicts maximum hoop stress. The ink-blot has started. The plastic zone is contained by surrounding elastic material, and the structure continues to carry increasing load."},
+  {cls:'p2',col:'#EA580C',lbl:'Spreading plasticity',
+   txt:"The plastic zone grows outward and expands angularly. Stress is redistributing away from the hole into the elastic far-field. This is why linear-elastic FEA over-predicts failure: the true collapse load is substantially higher than the first-yield load."},
+  {cls:'p3',col:'#DC2626',lbl:'Net section yield',
+   txt:"The plastic zones approach the plate edges. A fully plastic ligament is forming across the net section — the true collapse load. The gap between this and the elastic first-yield prediction is the reserve that linear analysis systematically discards."}
+];
+
+function kirsch(dx,dy){
+  const r=Math.sqrt(dx*dx+dy*dy);
+  if(r<=R) return -1;
+  const rho=R/r,p2=rho*rho,p4=p2*p2;
+  const th=Math.atan2(dy,dx),c2=Math.cos(2*th),s2=Math.sin(2*th);
+  const c=Math.cos(th),s=Math.sin(th);
+  // y-direction (vertical) loading — Kirsch transformed
+  const srr=0.5*(1-p2)-0.5*(1-4*p2+3*p4)*c2;
+  const stt=0.5*(1+p2)+0.5*(1+3*p4)*c2;
+  const trt=0.5*(1+2*p2-3*p4)*s2;
+  const sxx=srr*c*c+stt*s*s-2*trt*s*c;
+  const syy=srr*s*s+stt*c*c+2*trt*s*c;
+  const txy=(srr-stt)*s*c+trt*(c*c-s*s);
+  return Math.sqrt(Math.max(0,sxx*sxx+syy*syy-sxx*syy+3*txy*txy));
+}
+
+function cmap(t){
+  t=Math.max(0,Math.min(t,1));
+  const stops=[[0,40,80,200],[0.25,20,170,215],[0.55,70,210,70],[0.8,240,195,0],[1,255,75,10]];
+  for(let i=0;i<stops.length-1;i++){
+    const[t0,r0,g0,b0]=stops[i],[t1,r1,g1,b1]=stops[i+1];
+    if(t>=t0&&t<=t1){const f=(t-t0)/(t1-t0);return[r0+f*(r1-r0)|0,g0+f*(g1-g0)|0,b0+f*(b1-b0)|0];}
+  }
+  return[255,75,10];
+}
+
+let field=new Float32Array(W*H);
+(function precompute(){
+  for(let py=0;py<H;py++)
+    for(let px=0;px<W;px++){
+      if(px<PL||px>PR||py<PT||py>PB){field[py*W+px]=-2;continue;}
+      field[py*W+px]=kirsch(px-CX,py-CY);
+    }
+})();
+
+const mc=document.getElementById('mc'),mctx=mc.getContext('2d');
+let pzHist=[],lastSig=-1;
+
+function render(s0){
+  const img=mctx.createImageData(W,H);
+  const d=img.data;
+  let yN=0,plN=0;
+  for(let i=0,n=W*H;i<n;i++){
+    const f=field[i],di=i*4;
+    if(f===-2){d[di+3]=0;continue;}
+    if(f===-1){
+      const px=i%W,py=i/W|0;
+      const dr=Math.sqrt((px-CX)**2+(py-CY)**2);
+      const ring=dr>R-1.8;
+      d[di]=ring?30:248;d[di+1]=ring?30:248;d[di+2]=ring?50:252;d[di+3]=255;
+      continue;
+    }
+    plN++;
+    const vm=f*s0;
+    let r,g,b;
+    if(vm>=1.0){
+      yN++;
+      const px=i%W,py=i/W|0;
+      const hatch=(px+py)%7<2;
+      r=hatch?235:192;g=hatch?45:22;b=hatch?48:28;
+    } else {
+      [r,g,b]=cmap(vm);
+    }
+    const px=i%W,py=i/W|0;
+    const ed=Math.min(px-PL,PR-px,py-PT,PB-py);
+    const dim=ed<14?0.65+0.35*(ed/14):1;
+    d[di]=r*dim|0;d[di+1]=g*dim|0;d[di+2]=b*dim|0;d[di+3]=255;
+  }
+  mctx.putImageData(img,0,0);
+
+  // Plate border
+  mctx.strokeStyle='rgba(50,50,70,0.4)';mctx.lineWidth=1.5;
+  mctx.strokeRect(PL,PT,PR-PL,PB-PT);
+
+  // Tension arrows
+  if(s0>0.015){
+    const al=Math.min(22,s0*30+5)|0;
+    mctx.strokeStyle='rgba(74,222,128,0.82)';mctx.lineWidth=1.8;mctx.lineCap='round';
+    [130,230,340,450,550].forEach(ax=>{
+      [[PT,-1],[PB,1]].forEach(([ay,dir])=>{
+        mctx.beginPath();mctx.moveTo(ax,ay);mctx.lineTo(ax,ay-dir*al);mctx.stroke();
+        mctx.beginPath();mctx.moveTo(ax,ay-dir*al);mctx.lineTo(ax-4,ay-dir*(al-8));mctx.stroke();
+        mctx.beginPath();mctx.moveTo(ax,ay-dir*al);mctx.lineTo(ax+4,ay-dir*(al-8));mctx.stroke();
+      });
+    });
+  }
+
+  // Kt annotation at right equator
+  if(s0>0.05){
+    const vm=(3*s0).toFixed(2);
+    mctx.fillStyle='rgba(255,255,255,0.88)';mctx.font='500 10px JetBrains Mono';mctx.textAlign='left';
+    mctx.fillText('Kt=3  →  '+vm+'·σ_y',CX+R+8,CY+4);
+  }
+
+  // Plastic zone label
+  if(yN>40){
+    mctx.fillStyle='rgba(255,110,110,0.9)';mctx.font='9px JetBrains Mono';mctx.textAlign='center';
+    mctx.fillText('plastic zone',CX,CY-R-14);
+    mctx.beginPath();mctx.moveTo(CX-20,CY-R-10);mctx.lineTo(CX-R+4,CY-4);mctx.strokeStyle='rgba(255,110,110,0.5)';mctx.lineWidth=0.8;mctx.stroke();
+    mctx.beginPath();mctx.moveTo(CX+20,CY-R-10);mctx.lineTo(CX+R-4,CY-4);mctx.stroke();
+  }
+
+  return plN>0?yN/plN:0;
+}
+
+function drawGrowth(){
+  const c2=document.getElementById('pc'),ctx=c2.getContext('2d');
+  const W2=c2.width,H2=c2.height;
+  ctx.clearRect(0,0,W2,H2);
+  const pl=38,pr=8,pt=12,pb=30,cW=W2-pl-pr,cH=H2-pt-pb;
+
+  ctx.strokeStyle='rgba(128,128,128,0.2)';ctx.lineWidth=0.8;
+  ctx.beginPath();ctx.moveTo(pl,pt);ctx.lineTo(pl,pt+cH);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(pl,pt+cH);ctx.lineTo(W2-pr,pt+cH);ctx.stroke();
+  [0.33,0.66,1.0].forEach(f=>{
+    ctx.strokeStyle='rgba(128,128,128,0.07)';ctx.beginPath();ctx.moveTo(pl,pt+cH*(1-f*0.75));ctx.lineTo(W2-pr,pt+cH*(1-f*0.75));ctx.stroke();
+  });
+
+  ctx.fillStyle='rgba(128,128,128,0.55)';ctx.font='8px JetBrains Mono';
+  ctx.textAlign='right';
+  ['0%','25%','50%','75%'].forEach((l,i)=>ctx.fillText(l,pl-3,pt+cH*(1-i/4)+3));
+  ctx.textAlign='center';ctx.fillText('σ₀/σ_y',pl+cW/2,H2-4);
+
+  // First yield marker
+  const fyX=pl+(1/3)*cW;
+  ctx.strokeStyle='rgba(245,158,11,0.4)';ctx.lineWidth=0.8;ctx.setLineDash([2,3]);
+  ctx.beginPath();ctx.moveTo(fyX,pt);ctx.lineTo(fyX,pt+cH);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(245,158,11,0.7)';ctx.font='7px JetBrains Mono';ctx.textAlign='center';
+  ctx.fillText('1st yield',fyX,pt+8);
+
+  if(pzHist.length<2) return;
+  ctx.beginPath();
+  pzHist.forEach(([s,p],i)=>{
+    const x=pl+s*cW,y=pt+cH*(1-Math.min(p/0.75,1));
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  const [ls,lp]=pzHist[pzHist.length-1];
+  ctx.lineTo(pl+ls*cW,pt+cH);ctx.lineTo(pl,pt+cH);ctx.closePath();
+  ctx.fillStyle='rgba(220,38,38,0.1)';ctx.fill();
+  ctx.beginPath();
+  pzHist.forEach(([s,p],i)=>{
+    const x=pl+s*cW,y=pt+cH*(1-Math.min(p/0.75,1));
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle='#DC2626';ctx.lineWidth=1.8;ctx.stroke();
+  // Current dot
+  const [cs,cp]=pzHist[pzHist.length-1];
+  ctx.beginPath();ctx.arc(pl+cs*cW,pt+cH*(1-Math.min(cp/0.75,1)),3,0,Math.PI*2);
+  ctx.fillStyle='#DC2626';ctx.fill();
+}
+
+function update(){
+  const v=parseInt(document.getElementById('sl').value);
+  const s0=v/100;
+  document.getElementById('slv').textContent=s0.toFixed(2);
+  document.getElementById('r0').textContent=s0.toFixed(3);
+  document.getElementById('r1').textContent=(3*s0).toFixed(3);
+  const pzF=render(s0);
+  if(Math.abs(s0-lastSig)>0.005){
+    lastSig=s0;
+    pzHist=pzHist.filter(h=>h[0]<s0-0.001);
+    pzHist.push([s0,pzF]);
+    pzHist.sort((a,b)=>a[0]-b[0]);
+  }
+  drawGrowth();
+  document.getElementById('r2').textContent=pzF>0.001?(pzF*100).toFixed(1)+'%':'—';
+  const ph=s0<0.333?0:s0<0.55?1:s0<0.75?2:3;
+  const P=PH[ph];
+  const pb=document.getElementById('pb');
+  pb.textContent=P.lbl;pb.className='pb '+P.cls;
+  document.getElementById('pt').textContent=P.txt;
+  document.getElementById('pt').style.borderColor=P.col;
+}
+
+update();
+document.getElementById('sl').addEventListener('input',update);
+</script>
+</body>
+</html>

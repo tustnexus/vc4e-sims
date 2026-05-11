@@ -1,0 +1,34 @@
+This simulation accompanies Chapter 3 of Vibe Coding for Engineers by Anil Bahuman
+
+---
+
+# A Tale of Two Convergences
+
+The two runs below were produced by the same algorithm, the same robot, and starting guesses only 120° apart in joint space. Their outcomes could not be more different.
+
+Run A converged in four iterations, delivering sub-millimetre accuracy from a mediocre initial guess. It overshot badly on the first step — error grew from 82mm to 134mm — then self-corrected and entered quadratic convergence by k=2. The hallmark signature appeared in the final steps: error ratios of roughly 0.004 confirmed the textbook prediction that each iteration squares the previous residual. From 29mm to 5mm to 0.12mm in two steps. This is Newton-Raphson working as designed.
+
+Run B never converged. Error oscillated between 150mm and 200mm for 25 iterations, settling by k=18 into a stable two-cycle — the solver bouncing perpetually between the elbow-up and elbow-down solution branches of the 2-DOF arm. Crucially, error never dropped below 116mm at any point in the run, which is the diagnostic. A Newton-Raphson solver that cannot find a root doesn't fail loudly; it finds the next best thing, a fixed point of the squared iteration map, and orbits it indefinitely.
+
+The difference between the two runs was not algorithmic. It was geometric. Run A targeted a point inside the reachable workspace; Run B targeted a point the arm could not physically reach. Newton-Raphson has no awareness of this distinction — it pursues a root whether one exists or not.
+
+Three engineering lessons follow directly. First, always pre-check that the target lies within the annular workspace defined by |L₁ − L₂| ≤ ‖target‖ ≤ L₁ + L₂ before invoking the solver. Second, instrument your iteration loop with a cycle detector: if ‖θₖ − θₖ₋₂‖ < ε, a 2-cycle has stabilised and continuing wastes compute. Third, treat a hard iteration cap not as a safety net but as evidence of a problem upstream — in a real controller, Run B would silently exhaust its budget every control cycle, burning CPU on a geometrically impossible command.
+
+Together, these two runs reveal something important about numerical methods in robotics: convergence behaviour is as much a function of the problem geometry as of the algorithm. Understanding when Newton-Raphson will work — and recognising the signatures of when it will not — is as essential as knowing how to implement it.
+
+
+## Bonus: What Production Solvers Do Differently
+
+The three fixes below address the failure modes in order of where they intervene: before the step, during the inversion, and before the algorithm starts.
+
+**The three standard fixes, in order of sophistication:**
+
+**Step clamping** — Cap |Δθ| per iteration to 20–30°. Prevents the k=0→k=1 explosion but doesn't fix the cycle.
+
+**Damped least-squares (DLS)** — Add a damping term λ that acts as a soft resistance to large joint corrections, pulling the solution away from the singularity at the cost of some accuracy. Replace J⁻¹ with Jᵀ(JJᵀ + λI)⁻¹. The damping term λ regularises near-singular and near-boundary configurations. Error will still plateau on an unreachable target but it won't cycle.
+
+**Workspace pre-check + cycle detection** — Before iterating, verify ‖target‖ ≤ L₁+L₂. During iteration, detect 2-cycles by comparing ‖θₖ − θₖ₋₂‖ < ε and bail out early with a "no solution" flag rather than exhausting the iteration budget. The cycle detector above would catch it in 6 iterations instead.
+
+---
+
+This simulation accompanies Chapter 3 of Vibe Coding for Engineers by Anil Bahuman

@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three-Point Bending: Plastic Hinge Formation</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body { font-family: 'Crimson Pro', Georgia, serif; }
+.attribution { font-size: 0.85rem; color: #64748b; margin: 0 auto 1.5rem; text-align: center; font-style: italic; max-width: 700px; padding: 0 1.5rem; }
+.fe{font-family:'Crimson Pro',Georgia,serif;padding:1.4rem 0;max-width:700px;margin:0 auto}
+.tag{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#059669;font-family:'JetBrains Mono',monospace}
+.pb{display:inline-block;padding:3px 12px;border-radius:4px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;transition:all .4s;font-family:'JetBrains Mono',monospace}
+.p0{background:#EFF6FF;color:#1E40AF}.p1{background:#ECFDF5;color:#065F46}.p2{background:#FFF7ED;color:#C2410C}.p3{background:#111827;color:#6EE7B7}
+.rds{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:9px 0}
+.rc{background:var(--color-background-secondary);border-radius:8px;padding:8px 11px;border:.5px solid var(--color-border-tertiary)}
+.rl{font-size:9px;color:var(--color-text-tertiary);font-family:'JetBrains Mono',monospace;letter-spacing:.07em;margin-bottom:3px;text-transform:uppercase}
+.rv{font-size:15px;font-weight:500;color:var(--color-text-primary);font-family:'JetBrains Mono',monospace}
+.sl{display:flex;align-items:center;gap:10px;margin:7px 0}
+.pt{font-size:13px;color:var(--color-text-secondary);border-left:3px solid #059669;padding:7px 13px;line-height:1.75;transition:border-color .4s;font-style:italic;margin-top:10px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;align-items:start}
+.cbl{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--color-text-tertiary);margin-bottom:3px}
+.footer-attribution { font-size: 0.8rem; color: #94a3b8; text-align: center; margin-top: 2rem; font-style: italic; max-width: 700px; padding: 0 1.5rem; }
+</style>
+
+<body>
+
+<div class="attribution">
+    This simulation accompanies <strong>Chapter 7</strong> of <em>Vibe Coding for Engineers</em> by Anil Bahuman
+</div>
+
+<div class="fe">
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+  <span class="tag">Option C · Three-Point Bending · Plastic Hinge Formation</span>
+  <span class="pb p0" id="pb">Elastic</span>
+</div>
+
+<div class="cbl">beam elevation — load applied at midspan</div>
+<canvas id="bc" width="680" height="170" style="width:100%;height:auto;display:block;border-radius:8px;"></canvas>
+
+<div class="sl">
+  <span style="font-size:10px;color:var(--color-text-secondary);font-family:'JetBrains Mono',monospace;min-width:54px">P / P_e</span>
+  <input type="range" id="sl" min="0" max="100" value="0" step="1" style="flex:1">
+  <span style="font-size:10px;min-width:38px;text-align:right;font-family:'JetBrains Mono',monospace;color:var(--color-text-secondary)" id="slv">0.00</span>
+</div>
+
+<div class="rds">
+  <div class="rc"><div class="rl">P / P_e</div><div class="rv" id="r0">0.000</div></div>
+  <div class="rc"><div class="rl">M / M_e</div><div class="rv" id="r1">0.000</div></div>
+  <div class="rc"><div class="rl">M / M_p</div><div class="rv" id="r2">0.000</div></div>
+  <div class="rc"><div class="rl">Elastic core</div><div class="rv" id="r3">100%</div></div>
+</div>
+
+<div class="row2">
+  <div>
+    <div class="cbl">cross-section at midspan — stress distribution</div>
+    <canvas id="cc" width="330" height="190" style="width:100%;height:auto;display:block;border-radius:8px;"></canvas>
+  </div>
+  <div>
+    <div class="cbl">moment–curvature relationship M/M_p vs κ/κ_e</div>
+    <canvas id="mc" width="330" height="190" style="width:100%;height:auto;display:block;border-radius:8px;"></canvas>
+  </div>
+</div>
+
+<div class="pt" id="pt">The beam is fully elastic. Stress varies linearly across the section, zero at the neutral axis and maximum at the outer fibres. Any load removed now leaves no permanent deformation — the beam springs back completely.</div>
+</div>
+
+<div class="footer-attribution">
+    This simulation accompanies <strong>Chapter 7</strong> of <em>Vibe Coding for Engineers</em> by Anil Bahuman
+</div>
+
+<script>
+// ---- Mechanics ----
+// Rectangular section: shape factor = M_p/M_e = 1.5
+// Elastic first yield: M = M_e → P = P_e
+// Partial plasticity: M/M_p = 1 - (1/3)(κ_e/κ)²  →  elastic core = h * sqrt(3*(1-M/M_p))... 
+// Actually: for partially plastic section, elastic core fraction y_e/h/2 where 
+//   M = M_p*(1 - (1/3)*(y_e/(h/2))^2)
+// At M=M_e: y_e = h/2, core=100%
+// At M=M_p: y_e = 0, core=0%
+
+const Mp_Me = 1.5; // shape factor, rectangular
+
+// p = P/P_e, M/M_e = p (simply supported, midspan load)
+// M/M_p = p/1.5 = p * (M_e/M_p)
+// Elastic core fraction ef: from M/M_p = 1 - ef²/3  → ef = sqrt(3*(1-M/M_p))
+// But capped: if M < M_e, ef = 1 (fully elastic)
+
+function getState(p){
+  const MMe = p;               // M/M_e at midspan
+  const MMp = MMe / Mp_Me;     // M/M_p
+  let ef;                      // elastic core fraction (0–1)
+  if(MMp <= 1/Mp_Me){ ef = 1.0; }
+  else { ef = Math.sqrt(Math.max(0, 3*(1 - Math.min(MMp,0.999)))); }
+  // curvature: κ/κ_e = 1 in elastic, = 1/ef in partial, → ∞ at hinge
+  const kk = ef > 0.01 ? Math.min(1/ef, 30) : 30;
+  // mid-span deflection (normalised): δ/δ_e = P/P_e in elastic, grows faster with plasticity
+  const delta = p <= 1 ? p : p + (kk-1)*0.18;
+  return { MMe, MMp: Math.min(MMp,1.0), ef, kk, delta };
+}
+
+// Phase
+function phase(st){
+  if(st.MMp < 1/Mp_Me - 0.001) return 0;
+  if(st.ef > 0.25) return 1;
+  if(st.ef > 0.04) return 2;
+  return 3;
+}
+
+const PH=[
+  {cls:'p0',col:'#3B82F6',lbl:'Elastic',
+   txt:"The beam is fully elastic. Stress varies linearly across the section, zero at the neutral axis and maximum at the outer fibres. Any load removed now leaves no permanent deformation — the beam springs back completely."},
+  {cls:'p1',col:'#059669',lbl:'Partially plastic',
+   txt:"The outer fibres have yielded. A plastic zone has formed top and bottom, pinching an elastic core at the centre. The beam continues to carry increasing load as the elastic core redistributes moment — this is post-yield reserve."},
+  {cls:'p2',col:'#EA580C',lbl:'Hinge forming',
+   txt:"The elastic core has thinned to a fraction of the section depth. The moment-curvature curve is approaching its asymptote at M_p. Curvature is accelerating rapidly at midspan while the rest of the beam remains largely elastic."},
+  {cls:'p3',col:'#059669',lbl:'Full plastic hinge',
+   txt:"The elastic core has vanished. The section is fully yielded top and bottom — a plastic hinge has formed at midspan. The beam can rotate freely at this point and carries no additional moment. M = M_p = 1.5 M_e: a 50% reserve over first-yield load."}
+];
+
+// -------- Beam canvas --------
+function drawBeam(p){
+  const st=getState(p);
+  const c=document.getElementById('bc'),ctx=c.getContext('2d');
+  const W=c.width,H=c.height;
+  ctx.clearRect(0,0,W,H);
+
+  const bx0=70,bx1=610,bcy=80,bh=38,L=bx1-bx0,bmx=(bx0+bx1)/2;
+  // deflection shape: δ at midspan, cubic for simply-supported midpoint load
+  const dmax = Math.min(st.delta * 18, 42);
+
+  function beamY(x){
+    const xi=(x-bx0)/L; // 0..1
+    if(xi<=0||xi>=1) return bcy;
+    // simple shape: sin(π*xi) approx
+    return bcy + dmax*Math.sin(Math.PI*xi);
+  }
+
+  // Draw beam filled shape
+  const N=120;
+  // colour = gradient from elastic blue → plastic red based on M/M_p along length
+  // moment distribution: M(x) = P/2 * x for x<=L/2 (triangular)
+  ctx.beginPath();
+  ctx.moveTo(bx0, beamY(bx0)-bh/2);
+  for(let i=0;i<=N;i++){const x=bx0+(i/N)*L;ctx.lineTo(x,beamY(x)-bh/2);}
+  for(let i=N;i>=0;i--){const x=bx0+(i/N)*L;ctx.lineTo(x,beamY(x)+bh/2);}
+  ctx.closePath();
+  const grad=ctx.createLinearGradient(bx0,0,bx1,0);
+  // local M(xi) / M_max = 2*min(xi,1-xi)
+  // colour: elastic=blue, partial=orange, hinge=red
+  const getNCol=(xi)=>{
+    const mLocal=p*2*Math.min(xi,1-xi);
+    const mmp=mLocal/Mp_Me;
+    if(mmp<0.667) return [59,130,246];     // blue
+    if(mmp<0.9) return [245,158,11];       // amber
+    if(mmp<0.98) return [234,88,12];       // orange
+    return [220,38,38];                    // red
+  };
+  for(let i=0;i<=10;i++){
+    const xi=i/10;
+    const [r,g,b]=getNCol(xi);
+    grad.addColorStop(xi,`rgba(${r},${g},${b},0.85)`);
+  }
+  ctx.fillStyle=grad;ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.18)';ctx.lineWidth=1.2;ctx.stroke();
+
+  // Plastic hinge symbol at midspan
+  if(st.ef<0.12){
+    const hy=beamY(bmx);
+    ctx.beginPath();ctx.arc(bmx,hy,9,0,Math.PI*2);
+    ctx.fillStyle='#DC2626';ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.fillStyle='#fff';ctx.font='600 11px JetBrains Mono';ctx.textAlign='center';
+    ctx.fillText('⊗',bmx,hy+4);
+    ctx.fillStyle='rgba(220,38,38,0.8)';ctx.font='9px JetBrains Mono';
+    ctx.fillText('plastic hinge',bmx,hy-14);
+  }
+
+  // Supports
+  [[bx0,'L'],[bx1,'R']].forEach(([sx,lr])=>{
+    const sy=beamY(sx)+bh/2;
+    ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(sx-12,sy+22);ctx.lineTo(sx+12,sy+22);ctx.closePath();
+    ctx.fillStyle='#374151';ctx.fill();
+    ctx.beginPath();ctx.moveTo(sx-16,sy+24);ctx.lineTo(sx+16,sy+24);
+    ctx.strokeStyle='#374151';ctx.lineWidth=2;ctx.stroke();
+    // reaction arrows
+    if(p>0.02){
+      ctx.strokeStyle='rgba(74,222,128,0.85)';ctx.lineWidth=1.8;
+      const ral=Math.min(22,p*16+5)|0;
+      ctx.beginPath();ctx.moveTo(sx,sy+26);ctx.lineTo(sx,sy+26+ral);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(sx,sy+26+ral);ctx.lineTo(sx-4,sy+18+ral);ctx.moveTo(sx,sy+26+ral);ctx.lineTo(sx+4,sy+18+ral);ctx.stroke();
+      ctx.fillStyle='rgba(74,222,128,0.7)';ctx.font='9px JetBrains Mono';ctx.textAlign='center';
+      ctx.fillText('R=P/2',sx,sy+44);
+    }
+  });
+
+  // Applied load arrow
+  if(p>0.02){
+    const al=Math.min(28,p*22+8)|0;
+    const lx=bmx,ly=beamY(bmx)-bh/2-6;
+    ctx.strokeStyle='rgba(239,68,68,0.9)';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(lx,ly-al);ctx.lineTo(lx,ly);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(lx-5,ly-9);ctx.moveTo(lx,ly);ctx.lineTo(lx+5,ly-9);ctx.stroke();
+    ctx.fillStyle='rgba(239,68,68,0.85)';ctx.font='9px JetBrains Mono';ctx.textAlign='center';
+    ctx.fillText('P',lx,ly-al-5);
+  }
+
+  // Moment diagram (below beam)
+  if(p>0.02){
+    const md0=beamY(bx0)+bh/2+8,mscale=46*Math.min(p,1.5)/1.5;
+    ctx.beginPath();ctx.moveTo(bx0,md0);
+    for(let i=0;i<=N;i++){
+      const x=bx0+(i/N)*L,xi=i/N;
+      const m=2*Math.min(xi,1-xi)*mscale;
+      ctx.lineTo(x,md0+m);
+    }
+    ctx.lineTo(bx1,md0);ctx.closePath();
+    ctx.fillStyle='rgba(124,58,237,0.12)';ctx.fill();
+    ctx.strokeStyle='rgba(124,58,237,0.5)';ctx.lineWidth=1.2;ctx.stroke();
+    ctx.fillStyle='rgba(124,58,237,0.7)';ctx.font='9px JetBrains Mono';ctx.textAlign='center';
+    ctx.fillText('M diagram',bmx,md0+mscale+13);
+    // Mp line
+    const mpY=md0+46;
+    ctx.strokeStyle='rgba(220,38,38,0.3)';ctx.lineWidth=0.8;ctx.setLineDash([3,4]);
+    ctx.beginPath();ctx.moveTo(bx0,mpY);ctx.lineTo(bx1,mpY);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='rgba(220,38,38,0.5)';ctx.font='8px JetBrains Mono';ctx.textAlign='left';
+    ctx.fillText('M_p',bx1+4,mpY+3);
+  }
+}
+
+// -------- Cross-section canvas --------
+function drawSection(p){
+  const st=getState(p);
+  const c=document.getElementById('cc'),ctx=c.getContext('2d');
+  const W=c.width,H=c.height;
+  ctx.clearRect(0,0,W,H);
+
+  const cx=105,cy=H/2,sw=44,sh=110;
+  const ef=st.ef;
+  const ech=sh*ef;  // elastic core half-height
+  const phH=sh-ech; // plastic zone half-height (top and bottom)
+
+  // Section fill
+  // Top plastic zone
+  if(phH>1){
+    ctx.fillStyle='rgba(220,38,38,0.72)';
+    ctx.fillRect(cx-sw/2,cy-sh,sw,phH);
+    // hatch
+    ctx.save();ctx.beginPath();ctx.rect(cx-sw/2,cy-sh,sw,phH);ctx.clip();
+    ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=1;
+    for(let y=cy-sh;y<cy-ech;y+=5){ctx.beginPath();ctx.moveTo(cx-sw/2,y);ctx.lineTo(cx+sw/2,y);ctx.stroke();}
+    ctx.restore();
+  }
+  // Bottom plastic zone
+  if(phH>1){
+    ctx.fillStyle='rgba(220,38,38,0.72)';
+    ctx.fillRect(cx-sw/2,cy+ech,sw,phH);
+    ctx.save();ctx.beginPath();ctx.rect(cx-sw/2,cy+ech,sw,phH);ctx.clip();
+    ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=1;
+    for(let y=cy+ech;y<cy+sh;y+=5){ctx.beginPath();ctx.moveTo(cx-sw/2,y);ctx.lineTo(cx+sw/2,y);ctx.stroke();}
+    ctx.restore();
+  }
+  // Elastic core
+  if(ech>0.5){
+    ctx.fillStyle='rgba(59,130,246,0.6)';
+    ctx.fillRect(cx-sw/2,cy-ech,sw,ech*2);
+  }
+  // Section border
+  ctx.strokeStyle='rgba(50,50,70,0.45)';ctx.lineWidth=1.5;
+  ctx.strokeRect(cx-sw/2,cy-sh,sw,sh*2);
+  // Neutral axis
+  ctx.strokeStyle='rgba(128,128,128,0.4)';ctx.lineWidth=0.8;ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(cx-sw/2-6,cy);ctx.lineTo(cx+sw/2+6,cy);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(128,128,128,0.55)';ctx.font='8px JetBrains Mono';ctx.textAlign='left';
+  ctx.fillText('N.A.',cx+sw/2+8,cy+3);
+
+  // Elastic core bracket
+  if(ech>8){
+    ctx.strokeStyle='rgba(59,130,246,0.5)';ctx.lineWidth=0.8;
+    const bx=cx-sw/2-14;
+    ctx.beginPath();ctx.moveTo(bx+5,cy-ech);ctx.lineTo(bx,cy-ech);ctx.lineTo(bx,cy+ech);ctx.lineTo(bx+5,cy+ech);ctx.stroke();
+    ctx.fillStyle='rgba(59,130,246,0.7)';ctx.font='8px JetBrains Mono';ctx.textAlign='center';
+    ctx.save();ctx.translate(bx-10,cy);ctx.rotate(-Math.PI/2);ctx.fillText('elastic core',0,0);ctx.restore();
+  }
+
+  // Stress diagram
+  const sx0=cx+sw/2+20,sW=110;
+  // x-axis
+  ctx.strokeStyle='rgba(128,128,128,0.3)';ctx.lineWidth=0.8;
+  ctx.beginPath();ctx.moveTo(sx0,cy-sh-8);ctx.lineTo(sx0,cy+sh+8);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(sx0,cy);ctx.lineTo(sx0+sW+8,cy);ctx.stroke();
+  ctx.fillStyle='rgba(128,128,128,0.5)';ctx.font='8px JetBrains Mono';ctx.textAlign='center';
+  ctx.fillText('σ/σ_y →',sx0+sW/2,cy+sh+20);
+
+  // Stress profile
+  const sigScale=sW*0.82;
+  ctx.beginPath();
+  // From bottom (-sh) to top (+sh):
+  // bottom outer: σ = -1 (plastic, tension bottom = -σ_y? for hogging: compression top, tension bottom)
+  // Using convention: top = compression (−), bottom = tension (+)
+  const sigAt=(yRel)=>{ // yRel: -sh (bottom) to +sh (top), returns σ/σ_y
+    const yFrac=yRel/sh; // -1 to +1
+    if(Math.abs(yFrac)>=ef){ return yFrac>0?-1.0:1.0; } // plastic
+    return -yFrac/ef;
+  };
+  const N2=80;
+  let first=true;
+  for(let i=0;i<=N2;i++){
+    const yRel=-sh+i*(2*sh)/N2;
+    const sig=sigAt(yRel);
+    const px=sx0+sig*sigScale,py=cy-yRel;
+    first?ctx.moveTo(px,py):ctx.lineTo(px,py);first=false;
+  }
+  ctx.strokeStyle='rgba(124,58,237,0.85)';ctx.lineWidth=2;ctx.stroke();
+  // fill
+  ctx.beginPath();
+  first=true;
+  for(let i=0;i<=N2;i++){
+    const yRel=-sh+i*(2*sh)/N2,sig=sigAt(yRel);
+    const px=sx0+sig*sigScale,py=cy-yRel;
+    first?ctx.moveTo(px,py):ctx.lineTo(px,py);first=false;
+  }
+  ctx.lineTo(sx0,cy+sh);ctx.lineTo(sx0,cy-sh);ctx.closePath();
+  ctx.fillStyle='rgba(124,58,237,0.1)';ctx.fill();
+
+  // ±σ_y markers
+  [[-sigScale,'−σ_y'],[sigScale,'+σ_y']].forEach(([sx,lb])=>{
+    ctx.strokeStyle='rgba(128,128,128,0.25)';ctx.lineWidth=0.6;ctx.setLineDash([2,3]);
+    ctx.beginPath();ctx.moveTo(sx0+sx,cy-sh-6);ctx.lineTo(sx0+sx,cy+sh+6);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='rgba(128,128,128,0.55)';ctx.font='8px JetBrains Mono';ctx.textAlign='center';
+    ctx.fillText(lb,sx0+sx,cy+sh+19);
+  });
+
+  // Labels
+  ctx.fillStyle='rgba(59,130,246,0.8)';ctx.font='9px JetBrains Mono';ctx.textAlign='center';
+  if(ech>12) ctx.fillText('elastic',cx,cy+3);
+  if(phH>12){
+    ctx.fillStyle='rgba(220,38,38,0.8)';
+    ctx.fillText('plastic',cx,cy-sh+phH/2+3);
+    ctx.fillText('plastic',cx,cy+ech+phH/2+3);
+  }
+}
+
+// -------- M-κ canvas --------
+let mkHist=[];
+function drawMK(p){
+  const c=document.getElementById('mc'),ctx=c.getContext('2d');
+  const W=c.width,H=c.height;
+  ctx.clearRect(0,0,W,H);
+  const pl=44,pr=16,pt=14,pb=36,cW=W-pl-pr,cH=H-pt-pb;
+
+  const maxK=8,maxM=1.1;
+  const xk=k=>pl+Math.min(k/maxK,1)*cW;
+  const ym=m=>pt+cH*(1-Math.min(m/maxM,1));
+
+  // Background zones
+  ctx.fillStyle='rgba(59,130,246,0.04)';ctx.fillRect(pl,pt,xk(1)-pl,cH);
+  ctx.fillStyle='rgba(234,88,12,0.04)';ctx.fillRect(xk(1),pt,cW-(xk(1)-pl),cH);
+
+  // Grid
+  [0.25,0.5,0.75,1.0].forEach(f=>{
+    ctx.strokeStyle='rgba(128,128,128,0.07)';ctx.lineWidth=0.8;
+    ctx.beginPath();ctx.moveTo(pl,ym(f));ctx.lineTo(W-pr,ym(f));ctx.stroke();
+    ctx.fillStyle='rgba(128,128,128,0.5)';ctx.font='8px JetBrains Mono';ctx.textAlign='right';
+    ctx.fillText(f.toFixed(2),pl-4,ym(f)+3);
+  });
+  [2,4,6,8].forEach(k=>{
+    ctx.strokeStyle='rgba(128,128,128,0.07)';ctx.lineWidth=0.8;
+    ctx.beginPath();ctx.moveTo(xk(k),pt);ctx.lineTo(xk(k),pt+cH);ctx.stroke();
+    ctx.fillStyle='rgba(128,128,128,0.5)';ctx.font='8px JetBrains Mono';ctx.textAlign='center';
+    ctx.fillText(k,xk(k),pt+cH+14);
+  });
+
+  // Axes
+  ctx.strokeStyle='rgba(128,128,128,0.3)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(pl,pt);ctx.lineTo(pl,pt+cH);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(pl,pt+cH);ctx.lineTo(W-pr,pt+cH);ctx.stroke();
+
+  // Labels
+  ctx.fillStyle='rgba(128,128,128,0.5)';ctx.font='9px JetBrains Mono';ctx.textAlign='center';
+  ctx.fillText('κ / κ_e',pl+cW/2,H-4);
+  ctx.save();ctx.translate(11,pt+cH/2);ctx.rotate(-Math.PI/2);ctx.fillText('M / M_p',0,0);ctx.restore();
+
+  // M_e line
+  ctx.strokeStyle='rgba(59,130,246,0.35)';ctx.lineWidth=0.8;ctx.setLineDash([3,4]);
+  ctx.beginPath();ctx.moveTo(pl,ym(1/Mp_Me));ctx.lineTo(W-pr,ym(1/Mp_Me));ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(59,130,246,0.5)';ctx.font='8px JetBrains Mono';ctx.textAlign='right';
+  ctx.fillText('M_e',pl-4,ym(1/Mp_Me)-3);
+
+  // M_p asymptote
+  ctx.strokeStyle='rgba(220,38,38,0.3)';ctx.lineWidth=0.8;ctx.setLineDash([2,4]);
+  ctx.beginPath();ctx.moveTo(pl,ym(1.0));ctx.lineTo(W-pr,ym(1.0));ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(220,38,38,0.5)';ctx.font='8px JetBrains Mono';ctx.textAlign='right';
+  ctx.fillText('M_p',pl-4,ym(1.0)+3);
+
+  // Theoretical curve (dim)
+  ctx.beginPath();let first=true;
+  for(let i=1;i<=200;i++){
+    const kk=i/200*maxK+0.001;
+    let mm;
+    if(kk<=1){mm=kk/Mp_Me;}
+    else{mm=1-1/(3*kk*kk);}
+    mm=Math.min(mm,1.0);
+    const px=xk(kk),py=ym(mm);
+    first?ctx.moveTo(px,py):ctx.lineTo(px,py);first=false;
+  }
+  ctx.strokeStyle='rgba(128,128,128,0.15)';ctx.lineWidth=1.5;ctx.stroke();
+
+  // History trace
+  const st=getState(p);
+  if(st.kk>0.05){
+    const cpt=[Math.min(st.kk,maxK*0.98),Math.min(st.MMp,0.999)];
+    const existing=mkHist.filter(h=>h[0]<cpt[0]-0.02);
+    const trace=[...existing,cpt];
+    if(trace.length>1){
+      ctx.beginPath();
+      trace.forEach(([k,m],i)=>{
+        const px=xk(k),py=ym(m);
+        i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+      });
+      ctx.strokeStyle='rgba(124,58,237,0.8)';ctx.lineWidth=2.2;ctx.stroke();
+    }
+    // Current dot
+    const [ck,cm]=cpt;
+    ctx.beginPath();ctx.arc(xk(ck),ym(cm),5,0,Math.PI*2);
+    ctx.fillStyle='#7C3AED';ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=1.5;ctx.stroke();
+    // coord
+    ctx.fillStyle='rgba(124,58,237,0.7)';ctx.font='8px JetBrains Mono';ctx.textAlign='left';
+    const lx=xk(ck)+8,ly=Math.max(ym(cm)-6,pt+10);
+    ctx.fillText('('+ck.toFixed(1)+', '+cm.toFixed(2)+')',lx,ly);
+  }
+}
+
+// -------- Update --------
+function update(){
+  const v=parseInt(document.getElementById('sl').value);
+  const p=v/100*2.0; // P/P_e goes 0→2
+  const st=getState(p);
+  document.getElementById('slv').textContent=(p).toFixed(2);
+  document.getElementById('r0').textContent=p.toFixed(3);
+  document.getElementById('r1').textContent=st.MMe.toFixed(3);
+  document.getElementById('r2').textContent=Math.min(st.MMp,1.0).toFixed(3);
+  document.getElementById('r3').textContent=Math.round(st.ef*100)+'%';
+  const ph=phase(st);
+  const P=PH[ph];
+  const pb=document.getElementById('pb');
+  pb.textContent=P.lbl;pb.className='pb '+P.cls;
+  document.getElementById('pt').textContent=P.txt;
+  document.getElementById('pt').style.borderColor=P.col;
+  // Store history point
+  if(st.kk>0.05){
+    const k=Math.min(st.kk,7.9),m=Math.min(st.MMp,0.999);
+    const dup=mkHist.find(h=>Math.abs(h[0]-k)<0.08);
+    if(!dup) mkHist.push([k,m]);
+    mkHist.sort((a,b)=>a[0]-b[0]);
+  } else { mkHist=[]; }
+  drawBeam(p);drawSection(p);drawMK(p);
+}
+
+update();
+document.getElementById('sl').addEventListener('input',update);
+</script>
+</body>
+</html>
