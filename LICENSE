@@ -1,21 +1,171 @@
-MIT License
+# VC4E Proprietary License and Usage Terms
 
-Copyright (c) 2026 tustnexus
+Version 1.0
+Date: 20 May 2026
+Jurisdiction: Mumbai, Maharashtra, India
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Copyright © 2026 Anil Bahuman. All Rights Reserved.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Contact: [anil.bahuman@gmail.com](mailto:anil.bahuman@gmail.com)
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+---
+
+## 1. Purpose
+
+This license governs the use, reproduction, modification, distribution, publication, hosting, execution, training, indexing, adaptation, and commercialization of the VC4E ecosystem and all associated intellectual property.
+
+The VC4E ecosystem includes, but is not limited to:
+
+* Book manuscripts and chapter content
+* Ebook editions
+* Web-based engineering chapters
+* HTML simulations
+* Problem sets
+* Prompt systems
+* AI-assisted workflows
+* Diagrams, graphics, and visual assets
+* Source code and generated code
+* YAML metadata structures
+* GitHub repositories
+* Submission systems
+* Webflow content
+* Cloudflare-hosted content
+* Tally forms and submissions
+* Educational frameworks and methodologies
+* All derivative documentation and supporting materials
+
+Unless otherwise stated in writing by the copyright holder, all such materials are proprietary.
+
+---
+
+## 2. Ownership
+
+All intellectual property rights, including copyrights, trademarks, database rights, trade secrets, moral rights, and related rights in the VC4E ecosystem are owned exclusively by Anil Bahuman.
+
+No ownership or implied rights are transferred under this license.
+
+---
+
+## 3. Permitted Uses
+
+Subject to compliance with this license, users may:
+
+* Access publicly released VC4E materials for personal educational use
+* Read and interact with publicly accessible simulations
+* Reference small excerpts with attribution for academic commentary or review
+* Submit student projects through officially designated submission channels
+* Fork or clone repositories only where explicitly marked as open-source or publicly forkable
+
+All other rights are reserved.
+
+---
+
+## 4. Prohibited Uses
+
+Without prior written permission from Anil Bahuman, no person or entity may:
+
+* Republish VC4E content in whole or substantial part
+* Commercialize or resell VC4E materials
+* Create derivative educational products based substantially on VC4E
+* Use VC4E content for AI model training or dataset generation
+* Mirror or scrape simulations, repositories, or chapters at scale
+* Remove attribution, ownership notices, or metadata
+* Redistribute proprietary prompts, workflows, or internal tooling
+* Use VC4E branding or naming in misleading ways
+* Host modified copies implying official affiliation
+* Use student submissions outside officially authorized workflows
+
+---
+
+## 5. Student and Community Submissions
+
+By submitting projects, code, simulations, comments, or related content through official VC4E channels, contributors grant Anil Bahuman and the VC4E ecosystem a non-exclusive, worldwide, royalty-free license to:
+
+* Display submissions publicly
+* Archive submissions
+* Curate and showcase submissions
+* Use submissions for educational demonstrations
+* Adapt submissions for formatting, moderation, indexing, accessibility, or presentation purposes
+
+Contributors retain ownership of their original submissions unless separately agreed in writing.
+
+Contributors represent that they own or have permission to submit the materials provided.
+
+---
+
+## 6. Open Source Components
+
+Certain repositories, utilities, simulations, or supporting tools may be separately released under open-source licenses.
+
+Where a separate open-source license is explicitly included within a repository or file, that separate license governs only those specifically designated components.
+
+All other materials remain proprietary.
+
+---
+
+## 7. Educational Fair Use
+
+Reasonable educational quotation, classroom discussion, academic review, and scholarly commentary may be permitted under applicable law.
+
+This license does not limit rights available under Indian copyright law or other applicable fair dealing doctrines.
+
+---
+
+## 8. No Warranty
+
+VC4E materials are provided on an “as is” and “as available” basis.
+
+No warranties are provided regarding:
+
+* Accuracy
+* Completeness
+* Suitability
+* Availability
+* Educational outcomes
+* Engineering correctness
+* Simulation behavior
+* Fitness for a particular purpose
+
+Users assume all risk arising from use of the materials.
+
+---
+
+## 9. Limitation of Liability
+
+To the maximum extent permitted by law, Anil Bahuman shall not be liable for any direct, indirect, incidental, consequential, special, educational, academic, commercial, technical, or engineering damages arising from use of the VC4E ecosystem.
+
+---
+
+## 10. Enforcement
+
+Unauthorized use of VC4E intellectual property may result in:
+
+* Revocation of access
+* Removal requests
+* DMCA or equivalent takedown notices
+* Legal proceedings
+* Claims for damages or injunctive relief
+
+---
+
+## 11. Governing Law and Jurisdiction
+
+This license shall be governed by and interpreted in accordance with the laws of India.
+
+Any disputes arising under this license shall be subject to the exclusive jurisdiction of the courts located in Mumbai, Maharashtra, India.
+
+---
+
+## 12. Modifications
+
+Anil Bahuman reserves the right to modify or update this license at any time.
+
+Updated versions may be published through official VC4E repositories, websites, or distribution channels.
+
+---
+
+## 13. Contact
+
+Licensing inquiries, permissions requests, partnership discussions, and enforcement notices may be directed to:
+
+[anil.bahuman@gmail.com](mailto:anil.bahuman@gmail.com)
