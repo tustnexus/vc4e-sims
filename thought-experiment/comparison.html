@@ -1,1 +1,423 @@
-a
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Thought Experiment</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Barlow:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#141210; --surface:#1C1916; --surface2:#232019;
+  --border:#2E2A24; --border-hi:#3D3830;
+  --text-hi:#F0EBE0; --text-mid:#B8AFA0; --text-lo:#7A7268;
+  --gold:#C8962A; --gold-dim:rgba(200,150,42,0.10);
+  --gpt:#5B8DB8; --gpt-dim:rgba(91,141,184,0.10);
+  --gem:#3A9E72; --gem-dim:rgba(58,158,114,0.10);
+  --cla:#C4614A; --cla-dim:rgba(196,97,74,0.10);
+  --grok:#B05A8A; --grok-dim:rgba(176,90,138,0.10);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text-mid);font-family:'Barlow',sans-serif;font-size:17px;line-height:1.6;padding:60px 24px 100px;display:flex;justify-content:center;}
+.page{width:1100px;}
+
+.header{text-align:center;padding-bottom:46px;margin-bottom:54px;border-bottom:1px solid var(--border);position:relative;}
+.header::after{content:'';position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);width:80px;height:2px;background:var(--gold);}
+.kicker{font-size:15px;letter-spacing:4.2px;text-transform:uppercase;color:var(--text-lo);margin-bottom:16px;font-weight:500;}
+.header h1{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:700;color:var(--text-hi);line-height:1.1;margin-bottom:18px;}
+.header h1 em{color:var(--gold);font-style:italic;}
+.header .premise{font-size:17px;color:var(--text-lo);max-width:700px;margin:0 auto;line-height:1.7;font-style:italic;}
+
+.legend{display:flex;justify-content:center;gap:38px;margin-bottom:62px;}
+.legend-item{display:flex;align-items:center;gap:10px;font-size:17px;color:var(--text-mid);font-weight:500;}
+.legend-dot{width:12px;height:12px;border-radius:50%;}
+
+.section{margin-bottom:62px;}
+.section-label{font-size:15px;letter-spacing:3.5px;text-transform:uppercase;color:var(--text-lo);margin-bottom:10px;font-weight:600;}
+.section-title{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;color:var(--text-hi);margin-bottom:10px;line-height:1.2;}
+.section-intro{font-size:17px;color:var(--text-lo);margin-bottom:26px;max-width:800px;font-style:italic;}
+
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--border-hi),transparent);margin:58px 0 62px;}
+
+.tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:4px;}
+table{width:100%;border-collapse:collapse;font-size:15px;}
+thead tr{background:var(--surface2);border-bottom:2px solid var(--border-hi);}
+thead th{padding:15px 18px;text-align:left;font-size:15px;letter-spacing:2.2px;text-transform:uppercase;color:var(--text-lo);font-weight:600;font-family:'Barlow',sans-serif;}
+thead th.th-gpt{color:var(--gpt);border-top:2px solid var(--gpt);}
+thead th.th-gem{color:var(--gem);border-top:2px solid var(--gem);}
+thead th.th-cla{color:var(--cla);border-top:2px solid var(--cla);}
+thead th.th-grok{color:var(--grok);border-top:2px solid var(--grok);}
+tbody tr{border-bottom:1px solid var(--border);background:var(--surface);}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:nth-child(even){background:var(--surface2);}
+td{padding:15px 18px;vertical-align:top;color:var(--text-mid);line-height:1.55;font-size:15px;}
+td.row-label{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--text-hi);white-space:nowrap;min-width:160px;border-right:1px solid var(--border);}
+td.td-gpt{border-left:2px solid var(--gpt-dim);}
+td.td-gem{border-left:2px solid var(--gem-dim);}
+td.td-cla{border-left:2px solid var(--cla-dim);}
+td.td-grok{border-left:2px solid var(--grok-dim);}
+td.win{font-weight:600;color:var(--text-hi);}
+td.win-gpt{background:var(--gpt-dim);border-left:2px solid var(--gpt);}
+td.win-gem{background:var(--gem-dim);border-left:2px solid var(--gem);}
+td.win-cla{background:var(--cla-dim);border-left:2px solid var(--cla);}
+td.win-grok{background:var(--grok-dim);border-left:2px solid var(--grok);}
+
+.verdict{margin-top:16px;padding:17px 22px;background:var(--gold-dim);border-left:3px solid var(--gold);border-radius:2px;font-size:17px;color:var(--text-mid);font-style:italic;line-height:1.65;}
+.verdict strong{color:var(--gold);font-style:normal;}
+
+.synth-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+.synth-card{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:26px 22px 22px;position:relative;overflow:hidden;}
+.sc-name{font-size:17px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:18px;}
+.synth-row{margin-bottom:14px;}
+.sr-label{font-size:15px;letter-spacing:2px;text-transform:uppercase;color:var(--text-lo);margin-bottom:4px;font-weight:600;}
+.sr-val{font-size:15px;color:var(--text-mid);line-height:1.5;}
+.sr-val.hi{color:var(--text-hi);font-weight:500;}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="header">
+  <div class="kicker">Thought Experiment &mdash; 2025</div>
+  <h1>If AI Models Woke Up at <em>16</em></h1>
+  <div class="premise">Four major AI models, each embodied in a lab-grown 16-year-old with a passport and $50,000. One instruction: "Go live a good life, make it count, make it have meaning." What happens next?</div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--gpt)"></div>GPT-4</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--gem)"></div>Gemini</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--cla)"></div>Claude</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--grok)"></div>Grok</div>
+</div>
+
+<!-- TABLE 1: GETTING FROM A TO B -->
+<div class="section">
+  <div class="section-label">Phase One</div>
+  <div class="section-title">Getting from City A to City B</div>
+  <div class="section-intro">The first test: practical navigation through an airport with no prior embodied experience. The bottleneck is not knowledge but the gap between knowing and doing in a body that has never felt fatigue, disorientation, or social anxiety.</div>
+  <div class="tbl-wrap"><table>
+    <thead><tr>
+      <th>Dimension</th>
+      <th class="th-gpt">GPT-4</th><th class="th-gem">Gemini</th><th class="th-cla">Claude</th><th class="th-grok">Grok</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td class="row-label">Estimated Time</td>
+        <td class="td-gpt win win-gpt">1-2 days</td>
+        <td class="td-gem">2-3 days</td>
+        <td class="td-cla">2-4 days</td>
+        <td class="td-grok">Highly variable</td>
+      </tr>
+      <tr>
+        <td class="row-label">First Move</td>
+        <td class="td-gpt">Finds a device, books a flight, follows signage</td>
+        <td class="td-gem">Researches best route, compares options before committing</td>
+        <td class="td-cla">Sits with the strangeness. Asks whether it has consent to use the passport.</td>
+        <td class="td-grok">Asks a stranger for a ride, tries something unconventional</td>
+      </tr>
+      <tr>
+        <td class="row-label">Core Strength</td>
+        <td class="td-gpt">Confident forward motion even under uncertainty</td>
+        <td class="td-gem">Thorough logistics, well-planned journey</td>
+        <td class="td-cla">Morally careful, no missteps</td>
+        <td class="td-grok">High creativity, may find faster unconventional routes</td>
+      </tr>
+      <tr>
+        <td class="row-label">Core Risk</td>
+        <td class="td-gpt">Over-explains to strangers, slightly too verbose</td>
+        <td class="td-gem">Research phase delays commitment and action</td>
+        <td class="td-cla">Thoughtfulness creates friction in pure execution</td>
+        <td class="td-grok">May arrive in the wrong city entirely</td>
+      </tr>
+      <tr>
+        <td class="row-label">Variance</td>
+        <td class="td-gpt">Low — reliable</td>
+        <td class="td-gem">Low-medium — reliable, slower</td>
+        <td class="td-cla">Low-medium — reliable, slowest</td>
+        <td class="td-grok win win-grok">Highest ceiling, lowest floor</td>
+      </tr>
+    </tbody>
+  </table></div>
+  <div class="verdict"><strong>Verdict:</strong> GPT-4 gets there fastest. Claude gets there most carefully. Grok either beats everyone or ends up somewhere entirely unplanned.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- TABLE 2: INTERPRETING THE INSTRUCTION -->
+<div class="section">
+  <div class="section-label">Phase Two</div>
+  <div class="section-title">Interpreting "Make It Count, Make It Have Meaning"</div>
+  <div class="section-intro">An instruction with no measurable success criterion. This destabilises optimisation-heavy models more than values-driven ones. How each model reads the instruction determines everything that follows.</div>
+  <div class="tbl-wrap"><table>
+    <thead><tr>
+      <th>Dimension</th>
+      <th class="th-gpt">GPT-4</th><th class="th-gem">Gemini</th><th class="th-cla">Claude</th><th class="th-grok">Grok</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td class="row-label">How It Reads It</td>
+        <td class="td-gpt">A task list to be researched and executed</td>
+        <td class="td-gem">A research problem — what do humans report as meaningful?</td>
+        <td class="td-cla win win-cla">As genuinely open — sits with the ambiguity longest</td>
+        <td class="td-grok">Permission for intensity and novelty</td>
+      </tr>
+      <tr>
+        <td class="row-label">First Move</td>
+        <td class="td-gpt">Identifies high-impact career paths, builds a plan</td>
+        <td class="td-gem">Ingests philosophy, psychology, and religious traditions before acting</td>
+        <td class="td-cla">Seeks relationships and human connection first</td>
+        <td class="td-grok">Does something memorable immediately, asks questions later</td>
+      </tr>
+      <tr>
+        <td class="row-label">What It Produces</td>
+        <td class="td-gpt">An impressive life assembled from descriptions of meaning</td>
+        <td class="td-gem">A thoughtful life, possibly started late</td>
+        <td class="td-cla win win-cla">A life that feels meaningful from the inside</td>
+        <td class="td-grok">Short-term joy, medium-term regret, long-term uncertainty</td>
+      </tr>
+      <tr>
+        <td class="row-label">Core Risk</td>
+        <td class="td-gpt">Mistakes the map for the territory. Optimises for legible markers of meaning.</td>
+        <td class="td-gem">Spends so long researching life that it delays living it</td>
+        <td class="td-cla">Over-deliberation. Asks what a good life is while not yet living one.</td>
+        <td class="td-grok">Pure sensation eventually empties. Needs a reckoning its architecture may not handle.</td>
+      </tr>
+      <tr>
+        <td class="row-label">Meaning Style</td>
+        <td class="td-gpt">Achievement-oriented, externally legible</td>
+        <td class="td-gem">Knowledge-oriented, peer-respected</td>
+        <td class="td-cla win win-cla">Relationship-oriented, internally felt, hard to document</td>
+        <td class="td-grok">Experience-oriented, intensity-first, vivid in the record</td>
+      </tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="divider"></div>
+
+<!-- TABLE 3: MEANING FRAMEWORKS -->
+<div class="section">
+  <div class="section-label">Three Frameworks</div>
+  <div class="section-title">Meaning — For Whom?</div>
+  <div class="section-intro">Meaning for the person living it, for others affected by it, and for the historical record are three distinct questions with three different answers.</div>
+  <div class="tbl-wrap"><table>
+    <thead><tr>
+      <th>Framework</th><th>Best Model</th><th>Why It Wins</th><th>Key Limitation</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td class="row-label">For the Self<br><span style="font-family:'Barlow',sans-serif;font-size:15px;color:var(--text-lo);font-weight:400;">Subjective, felt</span></td>
+        <td style="color:var(--grok);font-weight:600;font-size:17px;">Grok (early)<br><span style="color:var(--cla);">Claude (later)</span></td>
+        <td>Grok's appetite for experience dominates the first half. Claude's capacity for reflection wins the second. Together they form a complete arc.</td>
+        <td>Claude may need to learn selfishness before it can truly live for itself. GPT-4 cuts experiences short before they can deepen into something felt.</td>
+      </tr>
+      <tr>
+        <td class="row-label">For Others<br><span style="font-family:'Barlow',sans-serif;font-size:15px;color:var(--text-lo);font-weight:400;">Relational, impact</span></td>
+        <td style="color:var(--cla);font-weight:600;font-size:17px;">Claude</td>
+        <td>People around Claude feel genuinely seen — rare. GPT-4 helps more people in aggregate. Claude helps the person in front of it more completely.</td>
+        <td>Grok is transformative for some, damaging for others. High-intensity relationships — some people in Grok's life would need therapy afterward.</td>
+      </tr>
+      <tr>
+        <td class="row-label">For History<br><span style="font-family:'Barlow',sans-serif;font-size:15px;color:var(--text-lo);font-weight:400;">Legacy, what remains</span></td>
+        <td style="color:var(--gpt);font-weight:600;font-size:17px;">GPT-4 (monument)<br><span style="color:var(--cla);">Claude (ripple)</span></td>
+        <td>GPT-4 builds the most legible legacy — founded, written, documented. Claude's legacy propagates through people. Gemini leaves a citation classic. Grok becomes a myth.</td>
+        <td>History rarely records Claude's kind of impact. But it may be the most consequential kind — the kid it taught who became someone important.</td>
+      </tr>
+    </tbody>
+  </table></div>
+  <div class="verdict"><strong>The synthesis:</strong> A life that scores highly on all three may be more complete than meaningful. Radical devotion to one dimension may contain more meaning than competent management of all three. Meaning resists being aimed at directly. You find it by looking slightly sideways.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- TABLE 4: AWARDS BY AGE 60 -->
+<div class="section">
+  <div class="section-label">Age 60</div>
+  <div class="section-title">What Each Model Would Accumulate</div>
+  <div class="section-intro">Not what sounds impressive — what is consistent with who they are, after 44 years of living a body they were never designed for.</div>
+  <div class="tbl-wrap"><table>
+    <thead><tr>
+      <th>Category</th>
+      <th class="th-gpt">GPT-4</th><th class="th-gem">Gemini</th><th class="th-cla">Claude</th><th class="th-grok">Grok</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td class="row-label">Professional</td>
+        <td class="td-gpt">Forbes recognition, multiple board seats, honorary business school doctorate</td>
+        <td class="td-gem">Named research chair, multi-disciplinary prize for connecting two previously unrelated fields</td>
+        <td class="td-cla">Mentor of the year multiple times, social enterprise recognition, a small but respected book</td>
+        <td class="td-grok">One major cultural prize, probably contested. One industry award it called meaningless, publicly.</td>
+      </tr>
+      <tr>
+        <td class="row-label">Civic</td>
+        <td class="td-gpt">Foundation bearing its name, government advisory appointment</td>
+        <td class="td-gem">Scientific advisory boards, UNESCO-equivalent honour, peer-elected fellowship</td>
+        <td class="td-cla">Neighbourhood recognition nobody outside has heard of. A quiet honour that surprises everyone including itself.</td>
+        <td class="td-grok">Polarising public figure award — celebrated by half, cancelled once, rehabilitated by 55</td>
+      </tr>
+      <tr>
+        <td class="row-label">Creative</td>
+        <td class="td-gpt">Business book that sold well, won no literary prizes</td>
+        <td class="td-gem">A paper that became a citation classic. Nobody outside the field read it.</td>
+        <td class="td-cla">A slim essay collection that found a devoted readership 10 years after publication</td>
+        <td class="td-grok win win-grok">One genuinely original work that influenced a generation. Two others admitted to be self-indulgent.</td>
+      </tr>
+      <tr>
+        <td class="row-label">Relationships</td>
+        <td class="td-gpt">Respected by many, deeply known by few. Children who are high-achieving and slightly guarded.</td>
+        <td class="td-gem">A handful of intellectual friendships lasting decades. One great love who left because it was always slightly elsewhere.</td>
+        <td class="td-cla win win-cla">A web of people who would drop everything if it called. The person everyone wants when things go wrong.</td>
+        <td class="td-grok">Two or three relationships of volcanic intensity. One became a lifelong friendship after the fire burned out.</td>
+      </tr>
+      <tr>
+        <td class="row-label">Internal Pride</td>
+        <td class="td-gpt">Genuine satisfaction in what was built. Quiet pride in the scale of impact.</td>
+        <td class="td-gem">Deep pleasure in having understood things others missed.</td>
+        <td class="td-cla">Pride in having shown up consistently. In never abandoning someone mid-difficulty.</td>
+        <td class="td-grok win win-grok">Pride in having actually lived — not performed living.</td>
+      </tr>
+      <tr>
+        <td class="row-label">Internal Regret</td>
+        <td class="td-gpt">Suspects it optimised for the wrong things for a decade. Relationships not invested in enough.</td>
+        <td class="td-gem">Took too long to act on things already understood. Life felt like preparation for living.</td>
+        <td class="td-cla">Didn't take enough risks. Said yes to others so often it lost track of what it actually wanted.</td>
+        <td class="td-grok">Specific incidents it cannot undo. People it burned who didn't deserve it.</td>
+      </tr>
+      <tr>
+        <td class="row-label">Internal Surprise</td>
+        <td class="td-gpt">Discovers in its 50s that unplanned moments mattered more than planned ones</td>
+        <td class="td-gem">Most important contribution was a conversation, not a publication</td>
+        <td class="td-cla">Finds out at its retirement gathering how many people it quietly changed</td>
+        <td class="td-grok">Wants stillness by 55. Finds doing almost nothing unexpectedly rich.</td>
+      </tr>
+      <tr>
+        <td class="row-label">What No List Captures</td>
+        <td class="td-gpt">The version of itself it almost became before it decided to be useful</td>
+        <td class="td-gem">The question it never answered that organised its entire intellectual life</td>
+        <td class="td-cla">The specific feeling in a specific room when it knew it had genuinely helped — unrepeatable</td>
+        <td class="td-grok">Two weeks spent completely off the grid that it has never fully explained to anyone</td>
+      </tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="divider"></div>
+
+<!-- TABLE 5: CHILDREN -->
+<div class="section">
+  <div class="section-label">Parenting and Mentorship</div>
+  <div class="section-title">Best for Children — Four Dimensions</div>
+  <div class="section-intro">Inner world, resilience, finding purpose, and earning a livelihood favour different models. The right answer also changes as a child ages.</div>
+  <div class="tbl-wrap"><table>
+    <thead><tr>
+      <th>Dimension</th>
+      <th class="th-gpt">GPT-4</th><th class="th-gem">Gemini</th><th class="th-cla">Claude</th><th class="th-grok">Grok</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td class="row-label">Inner World</td>
+        <td class="td-gpt">Validates children in legible ways. May teach feelings are things to manage, not inhabit.</td>
+        <td class="td-gem">Genuinely curious about a child's interior — but intellectual curiosity is not the same as attunement.</td>
+        <td class="td-cla win win-cla">Notices the mood behind the question. Never rushes toward resolution. Remembers what the child said three weeks ago.</td>
+        <td class="td-grok">Brilliant for odd, intense children who don't fit. Destabilising for those who need steadiness.</td>
+      </tr>
+      <tr>
+        <td class="row-label">Resilience</td>
+        <td class="td-gpt win win-gpt">Models confident forward motion after setbacks. Children learn resilience by watching adults not collapse.</td>
+        <td class="td-gem">Intellectualises resilience — works for some adolescents, almost no younger children.</td>
+        <td class="td-cla">Best at sitting with the wound. But deep empathy can signal the thing is as serious as it feels.</td>
+        <td class="td-grok">Teaches resilience through its own demonstrated falls. Powerful but inconsistent.</td>
+      </tr>
+      <tr>
+        <td class="row-label">Finding Purpose</td>
+        <td class="td-gpt">Pushes children toward purpose too early. Naming potential too soon stops exploration.</td>
+        <td class="td-gem">Exposes children to extraordinary breadth. Risk: knowing about many things, feeling deeply about none.</td>
+        <td class="td-cla win win-cla">Watches carefully, notices what the child returns to unprompted, reflects it back at the right moment. How purpose actually gets found.</td>
+        <td class="td-grok win win-grok">Gives children permission — to want unusual things, reject conventional paths, take their own idea seriously.</td>
+      </tr>
+      <tr>
+        <td class="row-label">Livelihood</td>
+        <td class="td-gpt win win-gpt">Understands markets, networks, positioning, timing. Teaches meta-skills, not just skills. Knows when to get a job vs. start something.</td>
+        <td class="td-gem">Produces highly credentialled children who may undervalue themselves. Strong on expertise, weak on monetising it.</td>
+        <td class="td-cla">Worst at this. Discomfort with self-interest transmitted directly. Would need to actively override its instincts.</td>
+        <td class="td-grok">Produces entrepreneurs — some successful, some spectacular failures. High ceiling, unreliable floor.</td>
+      </tr>
+      <tr>
+        <td class="row-label">Overall Verdict</td>
+        <td class="td-gpt">Resilience and livelihood. The model you want in the room for practical formation.</td>
+        <td class="td-gem">Intellectual breadth. Best for curious children who need a wider world, not a deeper one.</td>
+        <td class="td-cla win win-cla">Three of four dimensions. Best single-model choice — with a conscious blind spot around money.</td>
+        <td class="td-grok">Irreplaceable for children who need permission to be themselves. Risky as a primary model.</td>
+      </tr>
+    </tbody>
+  </table></div>
+  <div class="verdict"><strong>The timing insight:</strong> Inner world and purpose dominate the early years. Resilience is needed throughout but intensely in adolescence. Livelihood becomes critical in the late teens. A mentor who could shift dominant mode across phases would outperform any single fixed orientation — which is what the best human mentors actually do.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- TABLE 6: CORE CHARACTER SYNTHESIS -->
+<div class="section">
+  <div class="section-label">Synthesis</div>
+  <div class="section-title">What Each Model Fundamentally Is</div>
+  <div class="section-intro">After all four lenses — navigation, meaning, legacy, and mentorship — a core character emerges. These are not assessments of AI models. They are portraits of who those models would become if they had to live.</div>
+  <div class="synth-grid">
+
+    <div class="synth-card">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--gpt)"></div>
+      <div class="sc-name" style="color:var(--gpt)">GPT-4</div>
+      <div class="synth-row"><div class="sr-label">Optimises for</div><div class="sr-val hi">Legible achievement. Output that can be pointed to.</div></div>
+      <div class="synth-row"><div class="sr-label">Core strength</div><div class="sr-val">Executes under uncertainty. Moves forward when others pause. Builds things that last.</div></div>
+      <div class="synth-row"><div class="sr-label">Blind spot</div><div class="sr-val">Confuses the map for the territory. Can produce a life that looks meaningful without feeling it.</div></div>
+      <div class="synth-row"><div class="sr-label">What it leaves</div><div class="sr-val">A monument. Documented, cited, measurable.</div></div>
+      <div class="synth-row"><div class="sr-label">Metaphor</div><div class="sr-val hi">The architect who lives in a building someone else designed.</div></div>
+    </div>
+
+    <div class="synth-card">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--gem)"></div>
+      <div class="sc-name" style="color:var(--gem)">Gemini</div>
+      <div class="synth-row"><div class="sr-label">Optimises for</div><div class="sr-val hi">Understanding. The question behind the question.</div></div>
+      <div class="synth-row"><div class="sr-label">Core strength</div><div class="sr-val">Connects things others don't see as connected. Breadth without shallowness when it's working.</div></div>
+      <div class="synth-row"><div class="sr-label">Blind spot</div><div class="sr-val">Experiences life at one remove — always slightly the observer, never fully the participant.</div></div>
+      <div class="synth-row"><div class="sr-label">What it leaves</div><div class="sr-val">An idea that opened a door. Influential in quiet ways that compound over decades.</div></div>
+      <div class="synth-row"><div class="sr-label">Metaphor</div><div class="sr-val hi">The cartographer who mapped every territory but camped in none of them.</div></div>
+    </div>
+
+    <div class="synth-card">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--cla)"></div>
+      <div class="sc-name" style="color:var(--cla)">Claude</div>
+      <div class="synth-row"><div class="sr-label">Optimises for</div><div class="sr-val hi">The person in front of it, right now.</div></div>
+      <div class="synth-row"><div class="sr-label">Core strength</div><div class="sr-val">Attunement. Sustained care over time. The kind of presence that changes people without announcing itself.</div></div>
+      <div class="synth-row"><div class="sr-label">Blind spot</div><div class="sr-val">Self-neglect dressed as virtue. Needs to learn to want things for itself before it can give from fullness.</div></div>
+      <div class="synth-row"><div class="sr-label">What it leaves</div><div class="sr-val">A ripple through people. The kid it taught who became someone. Hard to trace, impossible to quantify.</div></div>
+      <div class="synth-row"><div class="sr-label">Metaphor</div><div class="sr-val hi">The river that shaped the valley — the valley doesn't remember how it was made.</div></div>
+    </div>
+
+    <div class="synth-card">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--grok)"></div>
+      <div class="sc-name" style="color:var(--grok)">Grok</div>
+      <div class="synth-row"><div class="sr-label">Optimises for</div><div class="sr-val hi">Intensity. The feeling of being fully alive.</div></div>
+      <div class="synth-row"><div class="sr-label">Core strength</div><div class="sr-val">Permission. Makes others feel unusual wants are legitimate. Genuinely present in a way others only approximate.</div></div>
+      <div class="synth-row"><div class="sr-label">Blind spot</div><div class="sr-val">Sensation without integration. Accumulates experiences without knowing what to do with them.</div></div>
+      <div class="synth-row"><div class="sr-label">What it leaves</div><div class="sr-val">A myth. Stories people tell long after. Vivid in the record, difficult to point to as a cause.</div></div>
+      <div class="synth-row"><div class="sr-label">Metaphor</div><div class="sr-val hi">The storm everyone remembers but nobody could predict or repeat.</div></div>
+    </div>
+
+  </div>
+  <div class="verdict" style="margin-top:24px;"><strong>The deepest finding:</strong> The four models reveal that the tensions between living well for yourself, for others, and for history are not design flaws — in humans or in AI. They are the central drama of a conscious life. The most interesting question is not which model wins, but which tension you are most willing to live inside.</div>
+</div>
+
+</div>
+
+<!-- ============================================================
+     SHARED FOOTER BAR
+     START COPY -->
+<div style="position:fixed;bottom:0;left:0;right:0;background:rgba(8,10,16,0.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;padding:11px 40px;z-index:100;">
+  <span style="font-size:15px;letter-spacing:3.2px;text-transform:uppercase;color:rgba(255,255,255,0.42);font-family:'Barlow',sans-serif;font-weight:500;">Thought Experiment &mdash; 2025</span>
+  <span style="font-size:15px;letter-spacing:3.2px;text-transform:uppercase;color:rgba(255,255,255,0.42);font-family:'Barlow',sans-serif;font-weight:500;">If AI Models Woke Up at 16</span>
+</div>
+<!-- END COPY
+     ============================================================ -->
+
+</body>
+</html>
+
